@@ -1,0 +1,71 @@
+# TimeTracker Configuration
+# =========================
+
+monitor:
+  # アクティブウィンドウのチェック間隔（秒）
+  interval_seconds: 5
+  # アイドル検出の閾値（秒）- この時間マウス/キーボード操作がなければアイドルとみなす
+  idle_threshold_seconds: 300
+
+database:
+  # SQLiteデータベースのパス
+  path: "~/.timetracker/timetracker.db"
+
+dashboard:
+  # Webダッシュボードのポート
+  port: 5555
+  host: "127.0.0.1"
+
+# ブラウザタブ監視対象
+browser_apps:
+  - "Google Chrome"
+  - "Safari"
+  - "Firefox"
+  - "Arc"
+  - "Microsoft Edge"
+
+# アクティビティ分類ルール
+# パターンマッチでアプリやURLからカテゴリを自動分類
+classification_rules:
+  # プロジェクト推定ルール（URLやウィンドウタイトルに含まれるキーワード）
+  projects:
+    - name: "例: プロジェクトA"
+      keywords: ["project-a", "プロジェクトA"]
+    # - name: "プロジェクトB"
+    #   keywords: ["project-b"]
+
+  # 作業工程の推定ルール
+  work_phases:
+    design:
+      keywords: ["figma", "Figma", "sketch", "Sketch", "miro", "Miro", "draw.io", "whimsical"]
+    implementation:
+      keywords: ["Visual Studio Code", "IntelliJ", "Xcode", "Terminal", "iTerm", "github.com/.*pull"]
+    review:
+      keywords: ["github.com/.*pull", "review", "GitLens"]
+    documentation:
+      keywords: ["Notion", "Confluence", "Google Docs", "docs.google.com"]
+    communication:
+      keywords: ["Slack", "Teams", "Zoom", "Google Meet", "meet.google.com"]
+    planning:
+      keywords: ["Jira", "Linear", "Asana", "Trello", "GitHub Issues"]
+    research:
+      keywords: ["stackoverflow.com", "qiita.com", "zenn.dev", "medium.com", "dev.to"]
+    email:
+      keywords: ["Mail", "Gmail", "Outlook", "mail.google.com"]
+
+# Google Calendar 設定
+google_calendar:
+  enabled: false
+  credentials_path: "~/.timetracker/credentials.json"
+  token_path: "~/.timetracker/token.json"
+  # 取得するカレンダーID（"primary" はメインカレンダー）
+  calendar_ids:
+    - "primary"
+
+# Slack 設定
+slack:
+  enabled: false
+  # Bot User OAuth Token (xoxb-...)
+  token: ""
+  # 監視対象のワークスペース名
+  workspace_name: ""

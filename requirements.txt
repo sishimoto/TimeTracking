@@ -1,0 +1,26 @@
+# Core dependencies
+pyobjc-core>=10.0
+pyobjc-framework-Cocoa>=10.0
+pyobjc-framework-Quartz>=10.0
+pyobjc-framework-ApplicationServices>=10.0
+pyobjc-framework-ScriptingBridge>=10.0
+
+# Menu bar app
+rumps>=0.4.0
+
+# Web dashboard
+flask>=3.0
+flask-cors>=4.0
+
+# Google Calendar integration
+google-api-python-client>=2.100
+google-auth-httplib2>=0.2
+google-auth-oauthlib>=1.2
+
+# Slack integration
+slack-sdk>=3.27
+
+# Utilities
+apscheduler>=3.10
+requests>=2.31
+python-dateutil>=2.9

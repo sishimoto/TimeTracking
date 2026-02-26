@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TimeTracker - 稼働時間ダッシュボード</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-card: #1c2333;
+            --border: #30363d;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-purple: #bc8cff;
+            --accent-orange: #f0883e;
+            --accent-red: #f85149;
+            --accent-yellow: #d29922;
+            --accent-cyan: #39d2c0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        header h1::before {
+            content: "⏱";
+            font-size: 28px;
+        }
+
+        .date-nav {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .date-nav button {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        .date-nav button:hover {
+            background: var(--bg-card);
+        }
+
+        .date-nav input[type="date"] {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        /* Stats Cards */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .stat-card .label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .stat-card .value {
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .stat-card .sub {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .stat-card.blue .value { color: var(--accent-blue); }
+        .stat-card.green .value { color: var(--accent-green); }
+        .stat-card.purple .value { color: var(--accent-purple); }
+        .stat-card.orange .value { color: var(--accent-orange); }
+
+        /* Grid layout */
+        .grid-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .grid-full {
+            margin-bottom: 24px;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .card h2 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Timeline */
+        .timeline {
+            max-height: 500px;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+
+        .timeline::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .timeline::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        .timeline-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+            gap: 12px;
+        }
+
+        .timeline-item:last-child {
+            border-bottom: none;
+        }
+
+        .timeline-time {
+            font-size: 12px;
+            color: var(--text-secondary);
+            min-width: 50px;
+            font-family: 'SF Mono', monospace;
+        }
+
+        .timeline-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-top: 6px;
+            flex-shrink: 0;
+        }
+
+        .timeline-content {
+            flex: 1;
+        }
+
+        .timeline-app {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .timeline-title {
+            font-size: 12px;
+            color: var(--text-secondary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 400px;
+        }
+
+        .timeline-tags {
+            display: flex;
+            gap: 4px;
+            margin-top: 4px;
+        }
+
+        .tag {
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+        }
+
+        .tag.project { border-color: var(--accent-blue); color: var(--accent-blue); }
+        .tag.phase { border-color: var(--accent-purple); color: var(--accent-purple); }
+        .tag.idle { border-color: var(--accent-red); color: var(--accent-red); }
+
+        /* App list */
+        .app-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .app-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .app-item:last-child { border-bottom: none; }
+
+        .app-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .app-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            background: var(--bg-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .app-name {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .app-time {
+            font-size: 14px;
+            color: var(--text-secondary);
+            font-family: 'SF Mono', monospace;
+        }
+
+        .app-bar {
+            height: 4px;
+            background: var(--accent-blue);
+            border-radius: 2px;
+            margin-top: 6px;
+            transition: width 0.3s ease;
+        }
+
+        /* Calendar events */
+        .event-item {
+            display: flex;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .event-time {
+            font-size: 12px;
+            color: var(--accent-cyan);
+            min-width: 100px;
+            font-family: 'SF Mono', monospace;
+        }
+
+        .event-title {
+            font-size: 14px;
+        }
+
+        .event-attendees {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* Chart container */
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state .icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+        }
+
+        /* Status indicator */
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-green);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .grid-2col {
+                grid-template-columns: 1fr;
+            }
+            .stats-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* Hourly heatmap */
+        .heatmap {
+            display: grid;
+            grid-template-columns: repeat(24, 1fr);
+            gap: 3px;
+            margin-top: 10px;
+        }
+
+        .heatmap-cell {
+            aspect-ratio: 1;
+            border-radius: 3px;
+            position: relative;
+            cursor: pointer;
+            min-height: 24px;
+        }
+
+        .heatmap-cell:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            white-space: nowrap;
+            z-index: 10;
+        }
+
+        .heatmap-labels {
+            display: grid;
+            grid-template-columns: repeat(24, 1fr);
+            gap: 3px;
+            margin-top: 4px;
+        }
+
+        .heatmap-labels span {
+            text-align: center;
+            font-size: 10px;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>TimeTracker</h1>
+            <div class="date-nav">
+                <div class="status-bar">
+                    <div class="status-dot" id="statusDot"></div>
+                    <span id="statusText">監視中</span>
+                </div>
+                <button onclick="changeDate(-1)">← 前日</button>
+                <input type="date" id="datePicker" onchange="loadDate(this.value)">
+                <button onclick="changeDate(1)">翌日 →</button>
+                <button onclick="loadToday()">今日</button>
+            </div>
+        </header>
+
+        <!-- Stats Cards -->
+        <div class="stats-row">
+            <div class="stat-card blue">
+                <div class="label">合計作業時間</div>
+                <div class="value" id="totalTime">--</div>
+                <div class="sub" id="totalTimeSub"></div>
+            </div>
+            <div class="stat-card green">
+                <div class="label">アプリ数</div>
+                <div class="value" id="appCount">--</div>
+                <div class="sub">使用アプリケーション</div>
+            </div>
+            <div class="stat-card purple">
+                <div class="label">メイン作業</div>
+                <div class="value" id="mainPhase">--</div>
+                <div class="sub" id="mainPhaseSub"></div>
+            </div>
+            <div class="stat-card orange">
+                <div class="label">プロジェクト数</div>
+                <div class="value" id="projectCount">--</div>
+                <div class="sub">識別されたプロジェクト</div>
+            </div>
+        </div>
+
+        <!-- Hourly Heatmap -->
+        <div class="grid-full">
+            <div class="card">
+                <h2>📊 時間帯別アクティビティ</h2>
+                <div class="heatmap" id="heatmap"></div>
+                <div class="heatmap-labels" id="heatmapLabels"></div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="grid-2col">
+            <!-- App Usage -->
+            <div class="card">
+                <h2>💻 アプリ使用時間</h2>
+                <div class="app-list" id="appList">
+                    <div class="empty-state">
+                        <div class="icon">📭</div>
+                        <p>データがありません</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Work Phase Breakdown -->
+            <div class="card">
+                <h2>🏷 作業工程の内訳</h2>
+                <div class="chart-container">
+                    <canvas id="phaseChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid-2col">
+            <!-- Timeline -->
+            <div class="card">
+                <h2>📋 タイムライン</h2>
+                <div class="timeline" id="timeline">
+                    <div class="empty-state">
+                        <div class="icon">📭</div>
+                        <p>データがありません</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Calendar Events -->
+            <div class="card">
+                <h2>📅 カレンダーイベント</h2>
+                <div id="calendarEvents">
+                    <div class="empty-state">
+                        <div class="icon">📅</div>
+                        <p>カレンダー連携が設定されていません</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Project Chart -->
+        <div class="grid-full">
+            <div class="card">
+                <h2>📁 プロジェクト別作業時間</h2>
+                <div class="chart-container">
+                    <canvas id="projectChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- State ---
+        let currentDate = new Date().toISOString().split('T')[0];
+        let phaseChart = null;
+        let projectChart = null;
+
+        // --- Colors ---
+        const PHASE_COLORS = {
+            'implementation': '#58a6ff',
+            'design': '#bc8cff',
+            'communication': '#f0883e',
+            'review': '#3fb950',
+            'documentation': '#d29922',
+            'planning': '#39d2c0',
+            'research': '#f778ba',
+            'email': '#8b949e',
+            '': '#444c56',
+        };
+
+        const CATEGORY_COLORS = {
+            'development': '#58a6ff',
+            'browser': '#3fb950',
+            'communication': '#f0883e',
+            'design': '#bc8cff',
+            'documentation': '#d29922',
+            'productivity': '#39d2c0',
+            'media': '#f778ba',
+            'other': '#8b949e',
+        };
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('datePicker').value = currentDate;
+            loadDate(currentDate);
+            // 30秒ごとに自動更新
+            setInterval(() => {
+                if (currentDate === new Date().toISOString().split('T')[0]) {
+                    loadDate(currentDate);
+                }
+            }, 30000);
+        });
+
+        // --- Navigation ---
+        function changeDate(delta) {
+            const d = new Date(currentDate);
+            d.setDate(d.getDate() + delta);
+            currentDate = d.toISOString().split('T')[0];
+            document.getElementById('datePicker').value = currentDate;
+            loadDate(currentDate);
+        }
+
+        function loadToday() {
+            currentDate = new Date().toISOString().split('T')[0];
+            document.getElementById('datePicker').value = currentDate;
+            loadDate(currentDate);
+        }
+
+        // --- API Calls ---
+        async function loadDate(dateStr) {
+            currentDate = dateStr;
+            try {
+                const res = await fetch(`/api/daily/${dateStr}`);
+                const data = await res.json();
+                updateDashboard(data);
+            } catch (err) {
+                console.error('データ取得エラー:', err);
+                document.getElementById('statusText').textContent = '接続エラー';
+                document.getElementById('statusDot').style.background = '#f85149';
+            }
+        }
+
+        // --- Update Dashboard ---
+        function updateDashboard(data) {
+            // Status
+            document.getElementById('statusText').textContent = '監視中';
+            document.getElementById('statusDot').style.background = '#3fb950';
+
+            // Stats
+            document.getElementById('totalTime').textContent = data.total_work_time || '0h 0m';
+            document.getElementById('totalTimeSub').textContent =
+                `${Math.round(data.total_seconds / 60)} 分`;
+
+            // Unique apps
+            const apps = [...new Set(data.summary.map(s => s.app_name).filter(Boolean))];
+            document.getElementById('appCount').textContent = apps.length;
+
+            // Main phase
+            const phases = {};
+            data.summary.forEach(s => {
+                if (s.work_phase) {
+                    phases[s.work_phase] = (phases[s.work_phase] || 0) + s.total_seconds;
+                }
+            });
+            const sortedPhases = Object.entries(phases).sort((a, b) => b[1] - a[1]);
+            if (sortedPhases.length > 0) {
+                document.getElementById('mainPhase').textContent = sortedPhases[0][0];
+                document.getElementById('mainPhaseSub').textContent =
+                    formatDuration(sortedPhases[0][1]);
+            } else {
+                document.getElementById('mainPhase').textContent = '--';
+                document.getElementById('mainPhaseSub').textContent = '';
+            }
+
+            // Projects
+            const projects = [...new Set(data.summary.map(s => s.project).filter(Boolean))];
+            document.getElementById('projectCount').textContent = projects.length;
+
+            // App list
+            updateAppList(data.summary);
+
+            // Phase chart
+            updatePhaseChart(phases);
+
+            // Timeline
+            updateTimeline(data.timeline);
+
+            // Heatmap
+            updateHeatmap(data.hourly);
+
+            // Calendar
+            updateCalendar(data.calendar_events);
+
+            // Project chart
+            updateProjectChart(data.summary);
+        }
+
+        // --- App List ---
+        function updateAppList(summary) {
+            const container = document.getElementById('appList');
+            const appTotals = {};
+            summary.forEach(s => {
+                if (s.app_name) {
+                    appTotals[s.app_name] = (appTotals[s.app_name] || 0) + s.total_seconds;
+                }
+            });
+
+            const sorted = Object.entries(appTotals).sort((a, b) => b[1] - a[1]);
+            const maxSeconds = sorted.length > 0 ? sorted[0][1] : 1;
+
+            if (sorted.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">📭</div>
+                        <p>本日のデータはまだありません</p>
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = sorted.map(([app, seconds]) => `
+                <div class="app-item">
+                    <div style="flex: 1">
+                        <div class="app-info">
+                            <div class="app-icon">${getAppEmoji(app)}</div>
+                            <span class="app-name">${escapeHtml(app)}</span>
+                        </div>
+                        <div class="app-bar" style="width: ${(seconds / maxSeconds * 100).toFixed(1)}%"></div>
+                    </div>
+                    <span class="app-time">${formatDuration(seconds)}</span>
+                </div>
+            `).join('');
+        }
+
+        // --- Phase Chart ---
+        function updatePhaseChart(phases) {
+            const ctx = document.getElementById('phaseChart').getContext('2d');
+            const labels = Object.keys(phases);
+            const values = Object.values(phases).map(v => Math.round(v / 60));
+            const colors = labels.map(l => PHASE_COLORS[l] || '#444c56');
+
+            if (phaseChart) phaseChart.destroy();
+
+            if (labels.length === 0) {
+                phaseChart = null;
+                return;
+            }
+
+            phaseChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors,
+                        borderColor: '#1c2333',
+                        borderWidth: 2,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                color: '#e6edf3',
+                                font: { size: 12 },
+                                padding: 12,
+                                generateLabels: function(chart) {
+                                    const data = chart.data;
+                                    return data.labels.map((label, i) => ({
+                                        text: `${label}  (${data.datasets[0].data[i]}分)`,
+                                        fillStyle: data.datasets[0].backgroundColor[i],
+                                        strokeStyle: '#1c2333',
+                                        lineWidth: 2,
+                                        index: i,
+                                    }));
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => `${ctx.label}: ${ctx.raw}分`
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- Project Chart ---
+        function updateProjectChart(summary) {
+            const ctx = document.getElementById('projectChart').getContext('2d');
+            const projectData = {};
+            summary.forEach(s => {
+                const proj = s.project || '(未分類)';
+                const phase = s.work_phase || '(その他)';
+                if (!projectData[proj]) projectData[proj] = {};
+                projectData[proj][phase] = (projectData[proj][phase] || 0) + s.total_seconds;
+            });
+
+            if (projectChart) projectChart.destroy();
+
+            const projects = Object.keys(projectData);
+            const allPhases = [...new Set(summary.map(s => s.work_phase || '(その他)'))];
+
+            if (projects.length === 0) {
+                projectChart = null;
+                return;
+            }
+
+            const datasets = allPhases.map(phase => ({
+                label: phase,
+                data: projects.map(p => Math.round((projectData[p][phase] || 0) / 60)),
+                backgroundColor: PHASE_COLORS[phase] || '#444c56',
+            }));
+
+            projectChart = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: projects, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            stacked: true,
+                            ticks: { color: '#8b949e' },
+                            grid: { color: '#30363d' },
+                        },
+                        y: {
+                            stacked: true,
+                            ticks: { color: '#8b949e', callback: v => v + '分' },
+                            grid: { color: '#30363d' },
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: { color: '#e6edf3', font: { size: 12 } }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => `${ctx.dataset.label}: ${ctx.raw}分`
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- Timeline ---
+        function updateTimeline(timeline) {
+            const container = document.getElementById('timeline');
+            if (!timeline || timeline.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">📭</div>
+                        <p>本日のタイムラインデータはありません</p>
+                    </div>`;
+                return;
+            }
+
+            // 連続する同一アプリをグループ化
+            const groups = [];
+            let current = null;
+            timeline.forEach(entry => {
+                if (!current || current.app_name !== entry.app_name) {
+                    if (current) groups.push(current);
+                    current = {
+                        ...entry,
+                        total_duration: entry.duration_seconds || 0,
+                        count: 1,
+                    };
+                } else {
+                    current.total_duration += entry.duration_seconds || 0;
+                    current.count++;
+                    current.window_title = entry.window_title; // 最新のタイトル
+                }
+            });
+            if (current) groups.push(current);
+
+            // 最新50件に絞る
+            const display = groups.slice(-50).reverse();
+
+            container.innerHTML = display.map(entry => {
+                const time = new Date(entry.timestamp).toLocaleTimeString('ja-JP', {
+                    hour: '2-digit', minute: '2-digit'
+                });
+                const dotColor = entry.is_idle ?
+                    'var(--accent-red)' :
+                    (PHASE_COLORS[entry.work_phase] || 'var(--accent-blue)');
+
+                return `
+                    <div class="timeline-item">
+                        <span class="timeline-time">${time}</span>
+                        <div class="timeline-dot" style="background: ${dotColor}"></div>
+                        <div class="timeline-content">
+                            <div class="timeline-app">${escapeHtml(entry.app_name || '')}</div>
+                            <div class="timeline-title">${escapeHtml(entry.window_title || '')}</div>
+                            <div class="timeline-tags">
+                                ${entry.is_idle ? '<span class="tag idle">アイドル</span>' : ''}
+                                ${entry.project ? `<span class="tag project">${escapeHtml(entry.project)}</span>` : ''}
+                                ${entry.work_phase ? `<span class="tag phase">${escapeHtml(entry.work_phase)}</span>` : ''}
+                                ${entry.total_duration > 0 ? `<span class="tag">${formatDuration(entry.total_duration)}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // --- Heatmap ---
+        function updateHeatmap(hourly) {
+            const heatmap = document.getElementById('heatmap');
+            const labels = document.getElementById('heatmapLabels');
+
+            // 時間帯ごとの合計を計算
+            const hourTotals = new Array(24).fill(0);
+            if (hourly) {
+                hourly.forEach(h => {
+                    const hour = parseInt(h.hour);
+                    hourTotals[hour] += h.total_seconds || 0;
+                });
+            }
+
+            const maxVal = Math.max(...hourTotals, 1);
+
+            heatmap.innerHTML = hourTotals.map((seconds, hour) => {
+                const intensity = seconds / maxVal;
+                const color = intensity === 0 ?
+                    'rgba(88, 166, 255, 0.05)' :
+                    `rgba(88, 166, 255, ${0.15 + intensity * 0.85})`;
+                const tooltip = `${hour}時: ${formatDuration(seconds)}`;
+                return `<div class="heatmap-cell" style="background: ${color}"
+                             data-tooltip="${tooltip}"></div>`;
+            }).join('');
+
+            labels.innerHTML = Array.from({length: 24}, (_, i) =>
+                `<span>${i}</span>`
+            ).join('');
+        }
+
+        // --- Calendar Events ---
+        function updateCalendar(events) {
+            const container = document.getElementById('calendarEvents');
+            if (!events || events.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">📅</div>
+                        <p>本日の予定はありません</p>
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = events.map(evt => {
+                const start = new Date(evt.start_time).toLocaleTimeString('ja-JP', {
+                    hour: '2-digit', minute: '2-digit'
+                });
+                const end = new Date(evt.end_time).toLocaleTimeString('ja-JP', {
+                    hour: '2-digit', minute: '2-digit'
+                });
+                return `
+                    <div class="event-item">
+                        <span class="event-time">${start} - ${end}</span>
+                        <div>
+                            <div class="event-title">${escapeHtml(evt.title || '')}</div>
+                            ${evt.attendees ? `<div class="event-attendees">👥 ${escapeHtml(evt.attendees)}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // --- Utilities ---
+        function formatDuration(seconds) {
+            if (!seconds || seconds <= 0) return '0m';
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            if (h > 0) return `${h}h ${m}m`;
+            return `${m}m`;
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function getAppEmoji(appName) {
+            const emojis = {
+                'Google Chrome': '🌐', 'Safari': '🧭', 'Firefox': '🦊',
+                'Arc': '🌈', 'Microsoft Edge': '🔵',
+                'Visual Studio Code': '💻', 'Code': '💻', 'Cursor': '💻',
+                'Terminal': '⬛', 'iTerm2': '⬛', 'iTerm': '⬛', 'Warp': '⬛',
+                'Slack': '💬', 'Discord': '💬', 'Microsoft Teams': '💬',
+                'Zoom': '📹', 'FaceTime': '📹',
+                'Figma': '🎨', 'Sketch': '🎨',
+                'Notion': '📝', 'Obsidian': '📝',
+                'Finder': '📂', 'Preview': '🖼',
+                'Mail': '✉️', 'Spotify': '🎵', 'Music': '🎵',
+                'Calendar': '📅', 'Reminders': '✅',
+                'Xcode': '🔨', 'IntelliJ IDEA': '🔨',
+            };
+            return emojis[appName] || '📱';
+        }
+    </script>
+</body>
+</html>
