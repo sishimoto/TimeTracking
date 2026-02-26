@@ -57,6 +57,35 @@ class ActiveWindowMonitor:
 
     BROWSER_NAMES = set(BROWSER_BUNDLE_IDS.values())
 
+    # バンドルIDから正しいアプリ名へのマッピング
+    # Electron系アプリなど、プロセス名が "Electron" になるものを補正
+    BUNDLE_ID_TO_APP_NAME = {
+        # エディタ / IDE
+        "com.microsoft.VSCode": "Visual Studio Code",
+        "com.todesktop.runtime.Cursor": "Cursor",
+        "com.vscodium": "VSCodium",
+        # コミュニケーション
+        "com.tinyspeck.slackmacgap": "Slack",
+        "com.microsoft.teams2": "Microsoft Teams",
+        "com.hnc.Discord": "Discord",
+        # ドキュメント / プロジェクト管理
+        "notion.id": "Notion",
+        "com.figma.Desktop": "Figma",
+        "com.linear": "Linear",
+        "com.electron.realtimeboard": "Miro",
+        # ターミナル
+        "dev.warp.Warp-Stable": "Warp",
+        "com.googlecode.iterm2": "iTerm2",
+        # その他
+        "com.spotify.client": "Spotify",
+        "com.obsproject.obs-studio": "OBS Studio",
+        "md.obsidian": "Obsidian",
+        "com.1password.1password": "1Password",
+        "com.openai.chat": "ChatGPT",
+        # ブラウザ（BROWSER_BUNDLE_IDSと重複するがフォールバック用）
+        **BROWSER_BUNDLE_IDS,
+    }
+
     def __init__(self, idle_threshold: int = 300):
         self.idle_threshold = idle_threshold
         self._last_input_time = time.time()
@@ -74,19 +103,46 @@ class ActiveWindowMonitor:
             logger.error(f"アクティブウィンドウ取得エラー: {e}")
             return None
 
+    def _resolve_app_name(self, process_name: str, displayed_name: str, bundle_id: str) -> str:
+        """プロセス名・表示名・バンドルIDからアプリの正しい名前を決定する
+
+        優先順位:
+        1. バンドルIDマッピング（最も信頼性が高い）
+        2. displayed name（メニューバーに表示される名前）
+        3. process name（フォールバック）
+        """
+        # 1. バンドルIDで既知アプリか確認
+        if bundle_id in self.BUNDLE_ID_TO_APP_NAME:
+            return self.BUNDLE_ID_TO_APP_NAME[bundle_id]
+
+        # 2. displayed name が汎用名でなければそれを使う
+        generic_names = {"Electron", "python", "Python", "node", "java", ""}
+        if displayed_name and displayed_name not in generic_names:
+            return displayed_name
+
+        # 3. process name がEleectronでなければそれを使う
+        if process_name and process_name not in generic_names:
+            return process_name
+
+        # 4. どれもダメならバンドルIDの末尾を使う
+        if bundle_id:
+            return bundle_id.split(".")[-1]
+        return process_name or "Unknown"
+
     def _get_active_window_applescript(self) -> Optional[WindowInfo]:
         """AppleScript (System Events) で確実にフォアグラウンドアプリを取得"""
         script = '''
             tell application "System Events"
                 set frontApp to first application process whose frontmost is true
-                set appName to name of frontApp
+                set procName to name of frontApp
+                set dispName to displayed name of frontApp
                 set bundleId to bundle identifier of frontApp
                 try
                     set winTitle to name of front window of frontApp
                 on error
                     set winTitle to ""
                 end try
-                return appName & "|||" & bundleId & "|||" & winTitle
+                return procName & "|||" & dispName & "|||" & bundleId & "|||" & winTitle
             end tell
         '''
         try:
@@ -101,9 +157,13 @@ class ActiveWindowMonitor:
                 return None
 
             parts = result.stdout.strip().split("|||")
-            app_name = parts[0].strip() if len(parts) > 0 else ""
-            bundle_id = parts[1].strip() if len(parts) > 1 else ""
-            window_title = parts[2].strip() if len(parts) > 2 else ""
+            process_name = parts[0].strip() if len(parts) > 0 else ""
+            displayed_name = parts[1].strip() if len(parts) > 1 else ""
+            bundle_id = parts[2].strip() if len(parts) > 2 else ""
+            window_title = parts[3].strip() if len(parts) > 3 else ""
+
+            # プロセス名・表示名・バンドルIDから正しいアプリ名を決定
+            app_name = self._resolve_app_name(process_name, displayed_name, bundle_id)
 
             if not app_name:
                 return None
