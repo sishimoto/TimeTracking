@@ -23,7 +23,7 @@ try:
     HAS_PYOBJC = True
 except ImportError:
     HAS_PYOBJC = False
-    logging.warning("pyobjc が見つかりません。フォールバックモードで動作します。")
+    logging.info("pyobjc が見つかりません。AppleScriptモードで動作します。")
 
 logger = logging.getLogger(__name__)
 
@@ -62,64 +62,74 @@ class ActiveWindowMonitor:
         self._last_input_time = time.time()
 
     def get_active_window(self) -> Optional[WindowInfo]:
-        """現在のアクティブウィンドウ情報を取得する"""
+        """現在のアクティブウィンドウ情報を取得する
+
+        AppleScript (System Events) を使ってフォアグラウンドアプリを取得します。
+        NSWorkspace.frontmostApplication() はバックグラウンドスレッドから呼ぶと
+        キャッシュされた古い値を返すため、常にAppleScript経由で取得します。
+        """
         try:
-            if HAS_PYOBJC:
-                return self._get_active_window_pyobjc()
-            else:
-                return self._get_active_window_fallback()
+            return self._get_active_window_applescript()
         except Exception as e:
             logger.error(f"アクティブウィンドウ取得エラー: {e}")
             return None
 
-    def _get_active_window_pyobjc(self) -> Optional[WindowInfo]:
-        """pyobjcを使ってアクティブウィンドウ情報を取得"""
-        workspace = NSWorkspace.sharedWorkspace()
-        active_app = workspace.frontmostApplication()
-
-        if active_app is None:
-            return None
-
-        app_name = active_app.localizedName() or ""
-        bundle_id = active_app.bundleIdentifier() or ""
-        pid = active_app.processIdentifier()
-
-        # ウィンドウタイトルを取得
-        window_title = self._get_window_title(pid)
-
-        # ブラウザの場合、URLを取得
-        url = ""
-        if app_name in self.BROWSER_NAMES or bundle_id in self.BROWSER_BUNDLE_IDS:
-            url = self._get_browser_url(app_name) or ""
-
-        # アイドル状態チェック
-        is_idle = self._check_idle()
-
-        return WindowInfo(
-            app_name=app_name,
-            window_title=window_title,
-            bundle_id=bundle_id,
-            url=url,
-            timestamp=datetime.now().isoformat(),
-            is_idle=is_idle,
-        )
-
-    def _get_window_title(self, pid: int) -> str:
-        """指定PIDのウィンドウタイトルを取得"""
-        if not HAS_PYOBJC:
-            return ""
+    def _get_active_window_applescript(self) -> Optional[WindowInfo]:
+        """AppleScript (System Events) で確実にフォアグラウンドアプリを取得"""
+        script = '''
+            tell application "System Events"
+                set frontApp to first application process whose frontmost is true
+                set appName to name of frontApp
+                set bundleId to bundle identifier of frontApp
+                try
+                    set winTitle to name of front window of frontApp
+                on error
+                    set winTitle to ""
+                end try
+                return appName & "|||" & bundleId & "|||" & winTitle
+            end tell
+        '''
         try:
-            options = kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements
-            window_list = CGWindowListCopyWindowInfo(options, kCGNullWindowID)
-            for window in window_list:
-                if window.get("kCGWindowOwnerPID") == pid:
-                    title = window.get("kCGWindowName", "")
-                    if title:
-                        return str(title)
-            return ""
+            result = subprocess.run(
+                ["osascript", "-e", script],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if result.returncode != 0:
+                logger.debug(f"AppleScript エラー: {result.stderr.strip()}")
+                return None
+
+            parts = result.stdout.strip().split("|||")
+            app_name = parts[0].strip() if len(parts) > 0 else ""
+            bundle_id = parts[1].strip() if len(parts) > 1 else ""
+            window_title = parts[2].strip() if len(parts) > 2 else ""
+
+            if not app_name:
+                return None
+
+            # ブラウザの場合、URLを取得
+            url = ""
+            if app_name in self.BROWSER_NAMES or bundle_id in self.BROWSER_BUNDLE_IDS:
+                url = self._get_browser_url(app_name) or ""
+
+            # アイドル状態チェック
+            is_idle = self._check_idle()
+
+            return WindowInfo(
+                app_name=app_name,
+                window_title=window_title,
+                bundle_id=bundle_id,
+                url=url,
+                timestamp=datetime.now().isoformat(),
+                is_idle=is_idle,
+            )
+        except subprocess.TimeoutExpired:
+            logger.debug("AppleScript タイムアウト")
+            return None
         except Exception as e:
-            logger.debug(f"ウィンドウタイトル取得エラー: {e}")
-            return ""
+            logger.error(f"アクティブウィンドウ取得エラー: {e}")
+            return None
 
     def _get_browser_url(self, app_name: str) -> Optional[str]:
         """ブラウザの現在のタブURLをAppleScript経由で取得"""
@@ -210,48 +220,8 @@ class ActiveWindowMonitor:
         return False
 
     def _get_active_window_fallback(self) -> Optional[WindowInfo]:
-        """pyobjcが使えない場合のフォールバック（AppleScript使用）"""
-        script = '''
-            tell application "System Events"
-                set frontApp to first application process whose frontmost is true
-                set appName to name of frontApp
-                set bundleId to bundle identifier of frontApp
-                try
-                    set winTitle to name of front window of frontApp
-                on error
-                    set winTitle to ""
-                end try
-                return appName & "|||" & bundleId & "|||" & winTitle
-            end tell
-        '''
-        try:
-            result = subprocess.run(
-                ["osascript", "-e", script],
-                capture_output=True,
-                text=True,
-                timeout=5,
-            )
-            if result.returncode == 0:
-                parts = result.stdout.strip().split("|||")
-                app_name = parts[0] if len(parts) > 0 else ""
-                bundle_id = parts[1] if len(parts) > 1 else ""
-                window_title = parts[2] if len(parts) > 2 else ""
-
-                url = ""
-                if app_name in self.BROWSER_NAMES:
-                    url = self._get_browser_url(app_name) or ""
-
-                return WindowInfo(
-                    app_name=app_name,
-                    window_title=window_title,
-                    bundle_id=bundle_id,
-                    url=url,
-                    timestamp=datetime.now().isoformat(),
-                    is_idle=self._check_idle(),
-                )
-        except Exception as e:
-            logger.error(f"フォールバック取得エラー: {e}")
-        return None
+        """後方互換用のエイリアス"""
+        return self._get_active_window_applescript()
 
 
 # Chromium系ブラウザからタブ一覧を取得するユーティリティ
