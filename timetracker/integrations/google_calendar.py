@@ -9,8 +9,8 @@ import logging
 from datetime import datetime, timedelta
 from typing import Optional
 
-from .config import get_config
-from .database import insert_calendar_event, get_connection
+from ..config import get_config
+from ..database import insert_calendar_event, get_connection
 
 logger = logging.getLogger(__name__)
 

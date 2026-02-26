@@ -8,9 +8,36 @@ import yaml
 from pathlib import Path
 from typing import Any
 
-_DEFAULT_CONFIG_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config.yaml"
-)
+def _find_config_path() -> str:
+    """config.yaml のパスを決定する（開発環境・py2app バンドル両対応）"""
+    # 1. プロジェクトルート（開発環境）
+    project_root = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config.yaml"
+    )
+    if os.path.exists(project_root):
+        return project_root
+
+    # 2. py2app バンドル内の Resources/
+    if hasattr(os, "environ") and "__PYVENV_LAUNCHER__" not in os.environ:
+        # バンドル: __file__ は .app/Contents/Resources/lib/python3.12/timetracker/config.py
+        bundle_resources = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            os.pardir, os.pardir, os.pardir, "config.yaml"
+        )
+        bundle_resources = os.path.normpath(bundle_resources)
+        if os.path.exists(bundle_resources):
+            return bundle_resources
+
+    # 3. ユーザーデータディレクトリ
+    user_config = os.path.expanduser("~/.timetracker/config.yaml")
+    if os.path.exists(user_config):
+        return user_config
+
+    # 4. フォールバック（開発環境パス）
+    return project_root
+
+
+_DEFAULT_CONFIG_PATH = _find_config_path()
 
 _config: dict[str, Any] | None = None
 

@@ -154,6 +154,7 @@ class ActiveWindowMonitor:
                 ["osascript", "-e", script],
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
                 timeout=5,
             )
             if result.returncode != 0:
@@ -229,6 +230,7 @@ class ActiveWindowMonitor:
                 ["osascript", "-e", script],
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
                 timeout=3,
             )
             if result.returncode == 0 and result.stdout.strip():
@@ -294,6 +296,7 @@ class ActiveWindowMonitor:
                 ["osascript", "-e", script],
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
                 timeout=3,
             )
             if result.returncode == 0 and result.stdout.strip():
@@ -310,6 +313,7 @@ class ActiveWindowMonitor:
                 ["ioreg", "-c", "IOHIDSystem"],
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
                 timeout=3,
             )
             output = result.stdout
@@ -350,6 +354,7 @@ def get_chrome_tabs() -> list[dict]:
             ["osascript", "-e", script],
             capture_output=True,
             text=True,
+            encoding="utf-8",
             timeout=10,
         )
         if result.returncode == 0:

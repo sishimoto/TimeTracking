@@ -7,8 +7,10 @@
 ### コア機能
 - **アクティブウィンドウ監視** - 数秒ごとにフォーカス中のアプリとウィンドウタイトルを記録
 - **ブラウザURL取得** - Chrome / Safari / Arc / Edge / Firefox のアクティブタブURLを取得
+- **ブラウザタブタイトル記録** - 約60秒間隔でアクティブタブのタイトルを記録（Chrome / Safari / Arc / Edge / Brave）
 - **アイドル検出** - マウス/キーボード操作がなければ自動的にアイドル状態として記録
 - **自動分類エンジン** - アプリ名・URL・ウィンドウタイトルからプロジェクト・作業工程を自動推定
+- **Electronアプリ対応** - VS Code, Miro, Warp等のElectron系アプリを正しい名前で記録
 
 ### ダッシュボード
 - 合計作業時間 / アプリ使用数 / メイン作業種別 のサマリー
@@ -32,6 +34,10 @@ timetracking/
 ├── config.yaml                  # 設定ファイル
 ├── requirements.txt             # 依存パッケージ
 ├── setup.sh                     # セットアップスクリプト
+├── .github/
+│   └── copilot-instructions.md  # AIコーディングエージェント用指示
+├── docs/
+│   └── TODO.md                  # ロードマップ / 機能管理
 └── timetracker/
     ├── __init__.py
     ├── config.py                # 設定管理
@@ -176,6 +182,8 @@ slack:
 - 設定ファイル: プロジェクトルートの `config.yaml`
 
 ## 今後の拡張アイデア
+
+詳細は [docs/TODO.md](docs/TODO.md) を参照してください。
 
 - AI によるアクティビティの自動要約
 - 週次/月次レポートの自動生成
