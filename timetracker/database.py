@@ -33,6 +33,7 @@ def init_db():
             window_title TEXT,
             bundle_id TEXT,
             url TEXT,
+            tab_title TEXT,
             duration_seconds REAL DEFAULT 0,
             is_idle INTEGER DEFAULT 0,
             project TEXT,
@@ -41,6 +42,12 @@ def init_db():
             notes TEXT
         )
     """)
+
+    # 既存テーブルに tab_title カラムがない場合は追加
+    try:
+        c.execute("ALTER TABLE activity_log ADD COLUMN tab_title TEXT")
+    except sqlite3.OperationalError:
+        pass  # 既に存在する
 
     # カレンダーイベント
     c.execute("""
@@ -127,6 +134,7 @@ def insert_activity(
     window_title: str,
     bundle_id: str = "",
     url: str = "",
+    tab_title: str = "",
     duration_seconds: float = 0,
     is_idle: bool = False,
     project: str = "",
@@ -139,10 +147,10 @@ def insert_activity(
     with get_connection() as conn:
         conn.execute(
             """INSERT INTO activity_log
-            (timestamp, app_name, window_title, bundle_id, url,
+            (timestamp, app_name, window_title, bundle_id, url, tab_title,
              duration_seconds, is_idle, project, work_phase, category)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (ts, app_name, window_title, bundle_id, url,
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (ts, app_name, window_title, bundle_id, url, tab_title,
              duration_seconds, int(is_idle), project, work_phase, category),
         )
 

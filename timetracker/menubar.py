@@ -132,6 +132,7 @@ class TimeTrackerApp(rumps.App):
                             window_title=window_info.window_title,
                             bundle_id=window_info.bundle_id,
                             url=window_info.url,
+                            tab_title=window_info.tab_title,
                             duration_seconds=duration,
                             is_idle=False,
                             project=classification["project"],

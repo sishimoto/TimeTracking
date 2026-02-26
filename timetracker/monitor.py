@@ -37,6 +37,7 @@ class WindowInfo:
     url: str  # ブラウザの場合のURL
     timestamp: str
     is_idle: bool
+    tab_title: str = ""  # ブラウザのアクティブタブタイトル
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -89,6 +90,9 @@ class ActiveWindowMonitor:
     def __init__(self, idle_threshold: int = 300):
         self.idle_threshold = idle_threshold
         self._last_input_time = time.time()
+        self._last_tab_title = ""
+        self._last_tab_fetch_time: float = 0
+        self._tab_fetch_interval = 60  # タブタイトル取得間隔（秒）
 
     def get_active_window(self) -> Optional[WindowInfo]:
         """現在のアクティブウィンドウ情報を取得する
@@ -168,10 +172,13 @@ class ActiveWindowMonitor:
             if not app_name:
                 return None
 
-            # ブラウザの場合、URLを取得
+            # ブラウザの場合、URLとタブタイトルを取得
             url = ""
-            if app_name in self.BROWSER_NAMES or bundle_id in self.BROWSER_BUNDLE_IDS:
+            tab_title = ""
+            is_browser = app_name in self.BROWSER_NAMES or bundle_id in self.BROWSER_BUNDLE_IDS
+            if is_browser:
                 url = self._get_browser_url(app_name) or ""
+                tab_title = self._get_browser_tab_title_throttled(app_name)
 
             # アイドル状態チェック
             is_idle = self._check_idle()
@@ -183,6 +190,7 @@ class ActiveWindowMonitor:
                 url=url,
                 timestamp=datetime.now().isoformat(),
                 is_idle=is_idle,
+                tab_title=tab_title,
             )
         except subprocess.TimeoutExpired:
             logger.debug("AppleScript タイムアウト")
@@ -190,6 +198,44 @@ class ActiveWindowMonitor:
         except Exception as e:
             logger.error(f"アクティブウィンドウ取得エラー: {e}")
             return None
+
+    def _get_browser_tab_title_throttled(self, app_name: str) -> str:
+        """ブラウザのアクティブタブタイトルを取得（約60秒間隔でサンプリング）"""
+        now = time.time()
+        if now - self._last_tab_fetch_time < self._tab_fetch_interval:
+            return self._last_tab_title
+
+        tab_title = self._get_browser_tab_title(app_name)
+        if tab_title:
+            self._last_tab_title = tab_title
+            self._last_tab_fetch_time = now
+            logger.debug(f"タブタイトル取得: {tab_title[:60]}")
+        return self._last_tab_title
+
+    def _get_browser_tab_title(self, app_name: str) -> str:
+        """AppleScript でブラウザのアクティブタブタイトルを取得"""
+        scripts = {
+            "Google Chrome": 'tell application "Google Chrome" to return title of active tab of front window',
+            "Safari": 'tell application "Safari" to return name of current tab of front window',
+            "Arc": 'tell application "Arc" to return title of active tab of front window',
+            "Microsoft Edge": 'tell application "Microsoft Edge" to return title of active tab of front window',
+            "Brave Browser": 'tell application "Brave Browser" to return title of active tab of front window',
+        }
+        script = scripts.get(app_name)
+        if not script:
+            return ""
+        try:
+            result = subprocess.run(
+                ["osascript", "-e", script],
+                capture_output=True,
+                text=True,
+                timeout=3,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                return result.stdout.strip()
+        except (subprocess.TimeoutExpired, Exception) as e:
+            logger.debug(f"タブタイトル取得エラー ({app_name}): {e}")
+        return ""
 
     def _get_browser_url(self, app_name: str) -> Optional[str]:
         """ブラウザの現在のタブURLをAppleScript経由で取得"""

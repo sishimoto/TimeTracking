@@ -99,6 +99,7 @@ def cmd_monitor(args):
                         window_title=info.window_title,
                         bundle_id=info.bundle_id,
                         url=info.url,
+                        tab_title=info.tab_title,
                         duration_seconds=duration,
                         is_idle=False,
                         project=classification["project"],
@@ -109,10 +110,11 @@ def cmd_monitor(args):
 
                     phase = classification["work_phase"] or "-"
                     proj = classification["project"] or "-"
+                    tab_info = f" | tab: {info.tab_title[:30]}" if info.tab_title else ""
                     print(
                         f"  📝 [{info.timestamp[11:19]}] "
                         f"{info.app_name:20s} | {phase:15s} | {proj:15s} | "
-                        f"{info.window_title[:50]}"
+                        f"{info.window_title[:50]}{tab_info}"
                     )
 
                     last_ts = now
