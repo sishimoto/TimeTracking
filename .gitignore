@@ -33,3 +33,6 @@ Thumbs.db
 # Credentials (never commit)
 credentials.json
 token.json
+
+# CalHelper binary (rebuild from CalHelper.swift)
+CalHelper.app/Contents/MacOS/CalHelper

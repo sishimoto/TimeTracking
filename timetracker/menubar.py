@@ -54,6 +54,9 @@ class TimeTrackerApp(rumps.App):
             rumps.MenuItem("終了", callback=self.quit_app),
         ]
 
+        # カレンダー同期
+        self._last_calendar_sync: float = 0
+
         # DB初期化
         init_db()
 
@@ -62,6 +65,9 @@ class TimeTrackerApp(rumps.App):
 
         # 自動で記録開始
         self._start_tracking()
+
+        # カレンダー初回同期（バックグラウンド）
+        self._schedule_calendar_sync()
 
     def toggle_tracking(self, sender):
         """記録の開始/停止を切り替え"""
@@ -164,9 +170,29 @@ class TimeTrackerApp(rumps.App):
         port = cfg.get("port", 5555)
         webbrowser.open(f"http://{host}:{port}")
 
+    def _schedule_calendar_sync(self):
+        """カレンダー同期をバックグラウンドで実行する"""
+        mac_cal_config = self.config.get("mac_calendar", {})
+        if not mac_cal_config.get("enabled", False):
+            return
+
+        thread = threading.Thread(target=self._sync_calendar, daemon=True)
+        thread.start()
+
+    def _sync_calendar(self):
+        """カレンダー同期の実処理"""
+        try:
+            from .integrations.mac_calendar import MacCalendarSync
+            sync = MacCalendarSync()
+            events = sync.sync_events(days_ahead=1)
+            self._last_calendar_sync = time.time()
+            logger.info(f"カレンダー同期完了: {len(events)} 件")
+        except Exception as e:
+            logger.error(f"カレンダー同期エラー: {e}")
+
     @rumps.timer(60)
     def update_status(self, _):
-        """1分ごとにステータスメニューを更新"""
+        """1分ごとにステータスメニューを更新 + カレンダー定期同期チェック"""
         try:
             summary = get_daily_summary()
             total_seconds = sum(r.get("total_seconds", 0) for r in summary)
@@ -180,6 +206,11 @@ class TimeTrackerApp(rumps.App):
                     break
         except Exception as e:
             logger.debug(f"ステータス更新エラー: {e}")
+
+        # カレンダー定期同期（sync_interval_seconds ごと）
+        cal_interval = self.config.get("mac_calendar", {}).get("sync_interval_seconds", 3600)
+        if time.time() - self._last_calendar_sync >= cal_interval:
+            self._schedule_calendar_sync()
 
     def quit_app(self, _):
         """アプリを終了"""

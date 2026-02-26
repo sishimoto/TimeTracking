@@ -53,7 +53,18 @@ classification_rules:
     email:
       keywords: ["Mail", "Gmail", "Outlook", "mail.google.com"]
 
-# Google Calendar 設定
+# Mac Calendar 設定（推奨：Google Calendar を Mac カレンダーに同期して使用）
+mac_calendar:
+  enabled: true
+  # 同期間隔（秒）デフォルト 3600 = 1時間
+  sync_interval_seconds: 3600
+  # 取得対象カレンダー名（空リスト = システムカレンダー以外全て）
+  calendar_names: []
+  # calendar_names:
+  #   - "個人"
+  #   - "仕事"
+
+# Google Calendar 設定（Mac Calendar が使えない場合のフォールバック）
 google_calendar:
   enabled: false
   credentials_path: "~/.timetracker/credentials.json"

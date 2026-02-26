@@ -125,21 +125,56 @@ def cmd_monitor(args):
 
 
 def cmd_sync_calendar(args):
-    """Google Calendarを手動同期"""
-    from timetracker.integrations.google_calendar import GoogleCalendarSync
+    """カレンダーを同期（Mac Calendar 優先、Google Calendar フォールバック）"""
+    cfg = get_config()
 
-    sync = GoogleCalendarSync()
-    if not sync.is_enabled:
-        print("❌ Google Calendar連携が無効です。config.yamlで enabled: true に設定してください。")
+    # Mac Calendar を優先
+    mac_cal_config = cfg.get("mac_calendar", {})
+    if mac_cal_config.get("enabled", False):
+        from timetracker.integrations.mac_calendar import MacCalendarSync
+
+        sync = MacCalendarSync()
+
+        # --list-calendars オプション
+        if getattr(args, "list_calendars", False):
+            calendars = sync.list_calendars_detailed()
+            if calendars:
+                print("📅 利用可能なカレンダー:")
+                for cal in calendars:
+                    source = cal.get("source", "")
+                    title = cal.get("title", "")
+                    print(f"  - {title}  (ソース: {source})")
+            else:
+                print("❌ カレンダーにアクセスできません。システム設定で許可してください。")
+            return
+
+        print("📅 Mac Calendar 同期中...")
+        events = sync.sync_events(days_ahead=args.days)
+        print(f"✅ {len(events)} 件のイベントを同期しました")
+        for evt in events:
+            print(f"  - {evt['start_time'][:16]} {evt['title']}")
+            if evt["attendees"]:
+                print(f"    参加者: {evt['attendees']}")
+            if evt["location"]:
+                print(f"    場所: {evt['location']}")
         return
 
-    print("📅 Google Calendar同期中...")
-    events = sync.sync_events(days_ahead=args.days)
-    print(f"✅ {len(events)} 件のイベントを同期しました")
-    for evt in events:
-        print(f"  - {evt['start_time'][:16]} {evt['title']}")
-        if evt['attendees']:
-            print(f"    参加者: {evt['attendees']}")
+    # Google Calendar フォールバック
+    gc_config = cfg.get("google_calendar", {})
+    if gc_config.get("enabled", False):
+        from timetracker.integrations.google_calendar import GoogleCalendarSync
+
+        sync = GoogleCalendarSync()
+        print("📅 Google Calendar 同期中...")
+        events = sync.sync_events(days_ahead=args.days)
+        print(f"✅ {len(events)} 件のイベントを同期しました")
+        for evt in events:
+            print(f"  - {evt['start_time'][:16]} {evt['title']}")
+            if evt["attendees"]:
+                print(f"    参加者: {evt['attendees']}")
+        return
+
+    print("❌ カレンダー連携が無効です。config.yaml で mac_calendar.enabled: true に設定してください。")
 
 
 def cmd_export(args):
@@ -189,9 +224,12 @@ def main():
     subparsers.add_parser("dashboard", help="ダッシュボードのみ起動")
 
     # sync-calendar
-    cal_parser = subparsers.add_parser("sync-calendar", help="Google Calendar同期")
+    cal_parser = subparsers.add_parser("sync-calendar", help="カレンダー同期")
     cal_parser.add_argument(
         "--days", type=int, default=1, help="何日先まで取得するか"
+    )
+    cal_parser.add_argument(
+        "--list-calendars", action="store_true", help="利用可能なカレンダー一覧を表示"
     )
 
     # export

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleExecutable</key>
+    <string>CalHelper</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.timetracker.calhelper</string>
+    <key>CFBundleName</key>
+    <string>CalHelper</string>
+    <key>CFBundleVersion</key>
+    <string>1.0</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>LSUIElement</key>
+    <true/>
+    <key>NSCalendarsUsageDescription</key>
+    <string>TimeTracker needs access to your calendars to display your schedule.</string>
+    <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>TimeTracker needs full access to your calendars to display your schedule.</string>
+</dict>
+</plist>
