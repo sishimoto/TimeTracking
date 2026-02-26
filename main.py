@@ -64,8 +64,10 @@ def cmd_monitor(args):
     )
     classifier = ActivityClassifier()
     last_ts = 0.0
+    was_idle = False
 
     print(f"⏱ CLIモニタリング開始（{interval}秒間隔）")
+    print(f"  アイドル閾値: {cfg.get('monitor', {}).get('idle_threshold_seconds', 300)}秒")
     print("  Ctrl+C で停止")
     print()
 
@@ -74,32 +76,46 @@ def cmd_monitor(args):
             info = monitor.get_active_window()
             if info:
                 now = time.time()
-                duration = min(now - last_ts, interval * 2) if last_ts > 0 else 0
-                classification = classifier.classify(info)
 
-                insert_activity(
-                    app_name=info.app_name,
-                    window_title=info.window_title,
-                    bundle_id=info.bundle_id,
-                    url=info.url,
-                    duration_seconds=duration,
-                    is_idle=info.is_idle,
-                    project=classification["project"],
-                    work_phase=classification["work_phase"],
-                    category=classification["category"],
-                    timestamp=info.timestamp,
-                )
+                if info.is_idle:
+                    # アイドル状態 → 記録スキップ（計測一時停止）
+                    if not was_idle:
+                        print(f"  💤 [{info.timestamp[11:19]}] アイドル検出 - 計測を一時停止")
+                        was_idle = True
+                else:
+                    # アクティブ状態
+                    if was_idle:
+                        # アイドルから復帰 → タイムスタンプをリセット
+                        print(f"  ▶️  [{info.timestamp[11:19]}] アイドル復帰 - 計測を再開")
+                        was_idle = False
+                        last_ts = now  # アイドル期間を含めない
 
-                status = "💤" if info.is_idle else "📝"
-                phase = classification["work_phase"] or "-"
-                proj = classification["project"] or "-"
-                print(
-                    f"  {status} [{info.timestamp[11:19]}] "
-                    f"{info.app_name:20s} | {phase:15s} | {proj:15s} | "
-                    f"{info.window_title[:50]}"
-                )
+                    duration = min(now - last_ts, interval * 2) if last_ts > 0 else 0
+                    classification = classifier.classify(info)
 
-                last_ts = now
+                    # アクティブ時のみ記録
+                    insert_activity(
+                        app_name=info.app_name,
+                        window_title=info.window_title,
+                        bundle_id=info.bundle_id,
+                        url=info.url,
+                        duration_seconds=duration,
+                        is_idle=False,
+                        project=classification["project"],
+                        work_phase=classification["work_phase"],
+                        category=classification["category"],
+                        timestamp=info.timestamp,
+                    )
+
+                    phase = classification["work_phase"] or "-"
+                    proj = classification["project"] or "-"
+                    print(
+                        f"  📝 [{info.timestamp[11:19]}] "
+                        f"{info.app_name:20s} | {phase:15s} | {proj:15s} | "
+                        f"{info.window_title[:50]}"
+                    )
+
+                    last_ts = now
 
             time.sleep(interval)
     except KeyboardInterrupt:

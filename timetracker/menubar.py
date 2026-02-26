@@ -41,6 +41,7 @@ class TimeTrackerApp(rumps.App):
         self._dashboard_thread = None
         self._last_window: WindowInfo | None = None
         self._last_timestamp: float = 0
+        self._is_currently_idle: bool = False
 
         # メニュー構築
         self.menu = [
@@ -100,37 +101,49 @@ class TimeTrackerApp(rumps.App):
             try:
                 window_info = self.monitor.get_active_window()
                 if window_info:
-                    # 前回からの経過時間を計算
                     now = time.time()
-                    duration = 0
-                    if self._last_timestamp > 0:
-                        duration = min(now - self._last_timestamp, interval * 2)
 
-                    # アクティビティを分類
-                    classification = self.classifier.classify(window_info)
-
-                    # データベースに保存
-                    insert_activity(
-                        app_name=window_info.app_name,
-                        window_title=window_info.window_title,
-                        bundle_id=window_info.bundle_id,
-                        url=window_info.url,
-                        duration_seconds=duration,
-                        is_idle=window_info.is_idle,
-                        project=classification["project"],
-                        work_phase=classification["work_phase"],
-                        category=classification["category"],
-                        timestamp=window_info.timestamp,
-                    )
-
-                    self._last_window = window_info
-                    self._last_timestamp = now
-
-                    # メニューバーのタイトルを更新
                     if window_info.is_idle:
+                        # アイドル状態 → 記録をスキップ（計測一時停止）
+                        if not self._is_currently_idle:
+                            # アイドル開始の遷移を記録
+                            logger.info("アイドル検出 - 計測を一時停止")
+                            self._is_currently_idle = True
                         self.title = "⏱ 💤"
                     else:
+                        # アクティブ状態
+                        if self._is_currently_idle:
+                            # アイドルから復帰 → タイムスタンプをリセット
+                            logger.info("アイドル復帰 - 計測を再開")
+                            self._is_currently_idle = False
+                            self._last_timestamp = now  # アイドル期間を含めないようリセット
+
+                        # 前回からの経過時間を計算
+                        duration = 0
+                        if self._last_timestamp > 0:
+                            duration = min(now - self._last_timestamp, interval * 2)
+
+                        # アクティビティを分類
+                        classification = self.classifier.classify(window_info)
+
+                        # データベースに保存（アクティブ時のみ）
+                        insert_activity(
+                            app_name=window_info.app_name,
+                            window_title=window_info.window_title,
+                            bundle_id=window_info.bundle_id,
+                            url=window_info.url,
+                            duration_seconds=duration,
+                            is_idle=False,
+                            project=classification["project"],
+                            work_phase=classification["work_phase"],
+                            category=classification["category"],
+                            timestamp=window_info.timestamp,
+                        )
+
+                        self._last_timestamp = now
                         self.title = "⏱ REC"
+
+                    self._last_window = window_info
 
             except Exception as e:
                 logger.error(f"トラッキングエラー: {e}")
