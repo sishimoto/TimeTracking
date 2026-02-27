@@ -419,6 +419,104 @@
             font-size: 10px;
             color: var(--text-secondary);
         }
+
+        /* Tag Edit Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            min-width: 400px;
+            max-width: 500px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+        .modal h3 {
+            margin: 0 0 16px 0;
+            font-size: 16px;
+        }
+        .modal-info {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            padding: 8px 12px;
+            background: var(--bg-secondary);
+            border-radius: 6px;
+        }
+        .modal-info div { margin: 2px 0; }
+        .modal-field {
+            margin-bottom: 14px;
+        }
+        .modal-field label {
+            display: block;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+        .modal-field select {
+            width: 100%;
+            padding: 8px 10px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 13px;
+        }
+        .modal-field select:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+        .modal-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+        .modal-actions button {
+            padding: 8px 20px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .modal-actions button.primary {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+            color: #fff;
+        }
+        .modal-actions button:hover { opacity: 0.85; }
+        .modal-actions button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--accent-green);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            z-index: 2000;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .toast.show { opacity: 1; }
+
+        .timeline-item { cursor: pointer; }
+        .timeline-item:hover { background: var(--bg-secondary); border-radius: 6px; }
     </style>
 </head>
 <body>
@@ -527,9 +625,32 @@
         </div>
     </div>
 
+    <!-- Tag Edit Modal -->
+    <div class="modal-overlay" id="tagModal">
+        <div class="modal">
+            <h3>🏷 タグを編集</h3>
+            <div class="modal-info" id="tagModalInfo"></div>
+            <div class="modal-field">
+                <label>作業工程（タスク分類）</label>
+                <select id="editWorkPhase"></select>
+            </div>
+            <div class="modal-field">
+                <label>プロジェクト（費用分類）</label>
+                <select id="editProject"></select>
+            </div>
+            <div class="modal-actions">
+                <button onclick="closeTagModal()">キャンセル</button>
+                <button class="primary" id="saveTagBtn" onclick="saveTagEdit()">保存</button>
+            </div>
+        </div>
+    </div>
+    <div class="toast" id="toast"></div>
+
     <script>
         // --- State ---
         let currentDate = new Date().toISOString().split('T')[0];
+        let tagOptions = null;
+        let editingEntry = null;
         let phaseChart = null;
         let projectChart = null;
 
@@ -851,7 +972,7 @@
             // 最新50件に絞る
             const display = groups.slice(-50).reverse();
 
-            container.innerHTML = display.map(entry => {
+            container.innerHTML = display.map((entry, idx) => {
                 const time = new Date(entry.timestamp).toLocaleTimeString('ja-JP', {
                     hour: '2-digit', minute: '2-digit'
                 });
@@ -860,7 +981,7 @@
                     (PHASE_COLORS[entry.work_phase] || 'var(--accent-blue)');
 
                 return `
-                    <div class="timeline-item">
+                    <div class="timeline-item" onclick="openTagModal(${idx})">
                         <span class="timeline-time">${time}</span>
                         <div class="timeline-dot" style="background: ${dotColor}"></div>
                         <div class="timeline-content">
@@ -877,6 +998,9 @@
                     </div>
                 `;
             }).join('');
+
+            // タイムラインデータを保持（タグ編集用）
+            window._timelineDisplay = display;
         }
 
         // --- Heatmap ---
@@ -961,6 +1085,118 @@
             div.textContent = str;
             return div.innerHTML;
         }
+
+        // --- Tag Editing ---
+        async function loadTagOptions() {
+            if (tagOptions) return tagOptions;
+            try {
+                const res = await fetch('/api/tag-options');
+                tagOptions = await res.json();
+            } catch (err) {
+                console.error('タグ選択肢取得エラー:', err);
+                tagOptions = { task_categories: [], cost_categories: [] };
+            }
+            return tagOptions;
+        }
+
+        async function openTagModal(idx) {
+            const entry = window._timelineDisplay?.[idx];
+            if (!entry || entry.is_idle) return;
+            editingEntry = entry;
+
+            const opts = await loadTagOptions();
+
+            // モーダル情報表示
+            const time = new Date(entry.timestamp).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+            document.getElementById('tagModalInfo').innerHTML = `
+                <div>🕐 ${time}  ·  ⏱ ${formatDuration(entry.total_duration)}  ·  ${entry.count || 1} レコード</div>
+                <div>📱 ${escapeHtml(entry.app_name || '')}</div>
+                <div>📄 ${escapeHtml(entry.window_title || '')}</div>
+            `;
+
+            // 作業工程セレクト
+            const wpSelect = document.getElementById('editWorkPhase');
+            wpSelect.innerHTML = '<option value="">(変更しない)</option>' +
+                opts.task_categories.map(c =>
+                    `<option value="${escapeHtml(c)}" ${c === entry.work_phase ? 'selected' : ''}>${escapeHtml(c)}</option>`
+                ).join('');
+
+            // プロジェクトセレクト
+            const pjSelect = document.getElementById('editProject');
+            pjSelect.innerHTML = '<option value="">(変更しない)</option>' +
+                '<option value="__clear__">(クリア)</option>' +
+                opts.cost_categories.map(c =>
+                    `<option value="${escapeHtml(c)}" ${c === entry.project ? 'selected' : ''}>${escapeHtml(c)}</option>`
+                ).join('');
+
+            document.getElementById('tagModal').classList.add('active');
+        }
+
+        function closeTagModal() {
+            document.getElementById('tagModal').classList.remove('active');
+            editingEntry = null;
+        }
+
+        async function saveTagEdit() {
+            if (!editingEntry) return;
+            const wp = document.getElementById('editWorkPhase').value;
+            const pj = document.getElementById('editProject').value;
+
+            if (!wp && !pj) {
+                closeTagModal();
+                return;
+            }
+
+            const btn = document.getElementById('saveTagBtn');
+            btn.disabled = true;
+            btn.textContent = '保存中...';
+
+            // グループの時間範囲を計算: タイムスタンプから最後のエントリまで
+            const startTime = editingEntry.timestamp;
+            // 最後のエントリ = タイムスタンプ + total_duration 秒後
+            const endDate = new Date(new Date(startTime).getTime() + (editingEntry.total_duration || 60) * 1000);
+            const endTime = endDate.toISOString().replace('Z', '');
+
+            const body = {
+                start_time: startTime,
+                end_time: endTime,
+                app_name: editingEntry.app_name,
+            };
+            if (wp) body.work_phase = wp;
+            if (pj === '__clear__') body.project = '';
+            else if (pj) body.project = pj;
+
+            try {
+                const res = await fetch('/api/update-tags', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                });
+                const result = await res.json();
+                showToast(`✅ ${result.updated} 件のレコードを更新しました`);
+                closeTagModal();
+                // ダッシュボードを再読み込み
+                loadDate(currentDate);
+            } catch (err) {
+                showToast('❌ 更新に失敗しました');
+                console.error('タグ更新エラー:', err);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '保存';
+            }
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // モーダル外クリックで閉じる
+        document.getElementById('tagModal')?.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal-overlay')) closeTagModal();
+        });
 
         function getAppEmoji(appName) {
             const emojis = {

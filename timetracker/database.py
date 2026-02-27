@@ -359,3 +359,34 @@ def get_weekly_trend(weeks: int = 4) -> list[dict]:
             (start_date,),
         ).fetchall()
         return [dict(row) for row in rows]
+
+
+def update_activity_tags(
+    start_time: str,
+    end_time: str,
+    app_name: str,
+    work_phase: Optional[str] = None,
+    project: Optional[str] = None,
+) -> int:
+    """指定期間・アプリのアクティビティログの work_phase と project を一括更新する"""
+    updates = []
+    params = []
+    if work_phase is not None:
+        updates.append("work_phase = ?")
+        params.append(work_phase)
+    if project is not None:
+        updates.append("project = ?")
+        params.append(project)
+    if not updates:
+        return 0
+
+    params.extend([start_time, end_time, app_name])
+
+    with get_connection() as conn:
+        cursor = conn.execute(
+            f"""UPDATE activity_log
+            SET {', '.join(updates)}
+            WHERE timestamp >= ? AND timestamp <= ? AND app_name = ?""",
+            params,
+        )
+        return cursor.rowcount

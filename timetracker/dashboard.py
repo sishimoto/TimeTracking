@@ -17,6 +17,7 @@ from .database import (
     get_project_summary,
     get_calendar_events,
     get_weekly_trend,
+    update_activity_tags,
 )
 
 
@@ -116,6 +117,41 @@ def create_app():
         """時間帯ごとの内訳"""
         hourly = get_hourly_breakdown(target_date)
         return jsonify({"hourly": hourly})
+
+    @app.route("/api/tag-options")
+    def api_tag_options():
+        """タグ編集用の選択肢を返す"""
+        cfg = get_config()
+        rules = cfg.get("classification_rules", {})
+        return jsonify({
+            "task_categories": rules.get("task_categories", []),
+            "cost_categories": rules.get("cost_categories", []),
+        })
+
+    @app.route("/api/update-tags", methods=["POST"])
+    def api_update_tags():
+        """アクティビティのタグを一括更新する"""
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+
+        start_time = data.get("start_time")
+        end_time = data.get("end_time")
+        app_name = data.get("app_name")
+        work_phase = data.get("work_phase")
+        project = data.get("project")
+
+        if not start_time or not end_time or not app_name:
+            return jsonify({"error": "start_time, end_time, app_name are required"}), 400
+
+        updated = update_activity_tags(
+            start_time=start_time,
+            end_time=end_time,
+            app_name=app_name,
+            work_phase=work_phase,
+            project=project,
+        )
+        return jsonify({"updated": updated})
 
     return app
 
