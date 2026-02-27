@@ -36,6 +36,8 @@ classification_rules:
 
   # 作業工程の推定ルール
   work_phases:
+    meeting:
+      keywords: ["Zoom", "Google Meet", "meet.google.com", "Microsoft Teams", "FaceTime"]
     design:
       keywords: ["figma", "Figma", "sketch", "Sketch", "miro", "Miro", "draw.io", "whimsical"]
     implementation:

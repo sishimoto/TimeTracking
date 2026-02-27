@@ -327,6 +327,20 @@ def get_calendar_events(target_date: Optional[str] = None) -> list[dict]:
         return [dict(row) for row in rows]
 
 
+def get_current_meeting() -> Optional[dict]:
+    """現在進行中の会議を取得する（終日イベントを除く）"""
+    now = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+    with get_connection() as conn:
+        row = conn.execute(
+            """SELECT * FROM calendar_events
+            WHERE start_time <= ? AND end_time >= ?
+              AND (is_all_day = 0 OR is_all_day IS NULL)
+            ORDER BY start_time DESC LIMIT 1""",
+            (now, now),
+        ).fetchone()
+        return dict(row) if row else None
+
+
 def get_weekly_trend(weeks: int = 4) -> list[dict]:
     """週ごとの作業傾向を取得"""
     start_date = (date.today() - timedelta(weeks=weeks)).isoformat()

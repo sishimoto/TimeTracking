@@ -13,7 +13,7 @@ from datetime import datetime
 import rumps
 
 from .config import get_config
-from .database import init_db, insert_activity, get_daily_summary
+from .database import init_db, insert_activity, get_daily_summary, get_current_meeting
 from .monitor import ActiveWindowMonitor, WindowInfo
 from .classifier import ActivityClassifier
 from .dashboard import run_dashboard
@@ -131,6 +131,11 @@ class TimeTrackerApp(rumps.App):
 
                         # アクティビティを分類
                         classification = self.classifier.classify(window_info)
+
+                        # カレンダーに会議があれば work_phase を meeting に上書き
+                        current_meeting = get_current_meeting()
+                        if current_meeting:
+                            classification["work_phase"] = "meeting"
 
                         # データベースに保存（アクティブ時のみ）
                         insert_activity(
