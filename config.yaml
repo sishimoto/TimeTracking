@@ -24,36 +24,90 @@ browser_apps:
   - "Arc"
   - "Microsoft Edge"
 
-# アクティビティ分類ルール
-# パターンマッチでアプリやURLからカテゴリを自動分類
+# アクティビティ分類ルール（2軸分類体系）
+# ===========================================
+# 1. タスク分類 (work_phase): プロジェクトタイプ + サブフェーズ
+#    例: "カスタム開発-実装", "プロダクト開発-設計"
+# 2. 費用分類 (project): 会計上の費用/資産計上区分
+#    例: "Impulse個別開発", "Impulse製品開発（共通機能の改良・強化）"
 classification_rules:
-  # プロジェクト推定ルール（URLやウィンドウタイトルに含まれるキーワード）
-  projects:
-    - name: "例: プロジェクトA"
-      keywords: ["project-a", "プロジェクトA"]
-    # - name: "プロジェクトB"
-    #   keywords: ["project-b"]
 
-  # 作業工程の推定ルール
-  work_phases:
+  # デフォルトプロジェクトタイプ（どのルールにもマッチしない場合）
+  default_project_type: "カスタム開発"
+
+  # プロジェクトタイプ判定ルール（上から順に評価、最初にマッチしたものを採用）
+  # ウィンドウタイトル・URLからリポジトリ名やプロジェクト名を判定
+  project_types:
+    # impulse-pj-xxx → カスタム開発（個別開発）
+    - type: "カスタム開発"
+      keywords: ["impulse-pj-"]
+      cost_category: "Impulse個別開発"
+    # impulse で始まるが pj が付かない → プロダクト開発
+    - type: "プロダクト開発"
+      keywords: ["(?<!-pj-)\\bimpulse\\b(?!-pj-)"]
+      cost_category: "Impulse製品開発（共通機能の改良・強化）"
+    # その他のリポジトリ → カスタム開発（デフォルト）
+
+  # サブフェーズ判定ルール（使用アプリ・URL パターンから判定）
+  # タスク分類 = プロジェクトタイプ + サブフェーズ（例: "カスタム開発-実装"）
+  # ※ 上から順に評価し、最初にマッチしたものを採用（テスト → 設計 → 実装 の順）
+  sub_phases:
+    テスト:
+      keywords: ["pytest", "unittest", "test.*result", "jest", "cypress"]
+    設計:
+      keywords: ["Figma", "Sketch", "Miro", "draw\\.io", "whimsical"]
+    要件定義:
+      keywords: ["要件", "requirement", "PRD"]
+    実装:
+      keywords: ["Visual Studio Code", "IntelliJ", "Xcode", "Terminal", "iTerm", "Warp", "Cursor", "PyCharm", "WebStorm"]
+
+  # 独立カテゴリ（プロジェクトタイプと合成しない）
+  standalone_phases:
     meeting:
-      keywords: ["Zoom", "Google Meet", "meet.google.com", "Microsoft Teams", "FaceTime"]
-    design:
-      keywords: ["figma", "Figma", "sketch", "Sketch", "miro", "Miro", "draw.io", "whimsical"]
-    implementation:
-      keywords: ["Visual Studio Code", "IntelliJ", "Xcode", "Terminal", "iTerm", "github.com/.*pull"]
-    review:
-      keywords: ["github.com/.*pull", "review", "GitLens"]
-    documentation:
-      keywords: ["Notion", "Confluence", "Google Docs", "docs.google.com"]
+      keywords: ["Zoom", "Google Meet", "meet\\.google\\.com", "Microsoft Teams", "FaceTime"]
     communication:
-      keywords: ["Slack", "Teams", "Zoom", "Google Meet", "meet.google.com"]
+      keywords: ["Slack", "Discord", "Messages", "LINE", "Telegram"]
+    email:
+      keywords: ["Mail", "Gmail", "Outlook", "mail\\.google\\.com"]
+    documentation:
+      keywords: ["Notion", "Confluence", "Google Docs", "docs\\.google\\.com"]
     planning:
       keywords: ["Jira", "Linear", "Asana", "Trello", "GitHub Issues"]
     research:
-      keywords: ["stackoverflow.com", "qiita.com", "zenn.dev", "medium.com", "dev.to"]
-    email:
-      keywords: ["Mail", "Gmail", "Outlook", "mail.google.com"]
+      keywords: ["stackoverflow\\.com", "qiita\\.com", "zenn\\.dev", "medium\\.com", "dev\\.to"]
+
+  # 費用分類の全選択肢（ダッシュボードでの手動選択用）
+  cost_categories:
+    - "Impulse営業活動"
+    - "Impulse技術調査・研究開発"
+    - "Impulse導入作業"
+    - "Impulseデータ分析・対応（PoC）"
+    - "Impulse製品開発（共通機能の改良・強化）"
+    - "Impulse個別開発"
+    - "Impulse製品開発（メジャーVerUp）"
+    - "Impulse保守開発・保守作業"
+
+  # タスク分類の全選択肢（ダッシュボードでの手動選択用）
+  task_categories:
+    - "分析"
+    - "カスタム開発-要件定義"
+    - "カスタム開発-設計"
+    - "カスタム開発-実装"
+    - "カスタム開発-テスト"
+    - "プロダクト開発-要件定義"
+    - "プロダクト開発-設計"
+    - "プロダクト開発-実装"
+    - "プロダクト開発-テスト"
+    - "導入-基本設計"
+    - "導入-導入試験・検証"
+    - "導入-導入作業"
+    - "導入-トレーニング・顧客説明"
+    - "meeting"
+    - "communication"
+    - "email"
+    - "documentation"
+    - "planning"
+    - "research"
 
 # Mac Calendar 設定（推奨：Google Calendar を Mac カレンダーに同期して使用）
 mac_calendar:
