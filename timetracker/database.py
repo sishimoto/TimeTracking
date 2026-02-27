@@ -226,6 +226,7 @@ def get_timeline(target_date: Optional[str] = None) -> list[dict]:
                 timestamp,
                 app_name,
                 window_title,
+                tab_title,
                 url,
                 duration_seconds,
                 is_idle,
