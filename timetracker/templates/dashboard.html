@@ -528,6 +528,7 @@
                     <div class="status-dot" id="statusDot"></div>
                     <span id="statusText">監視中</span>
                 </div>
+                <a href="#" id="summaryLink" style="background: var(--bg-secondary); border: 1px solid var(--border); color: var(--accent-blue); padding: 6px 14px; border-radius: 6px; font-size: 14px; text-decoration: none; cursor: pointer;">📋 日次サマリー</a>
                 <button onclick="changeDate(-1)">← 前日</button>
                 <input type="date" id="datePicker" onchange="loadDate(this.value)">
                 <button onclick="changeDate(1)">翌日 →</button>
@@ -570,27 +571,6 @@
 
         <!-- Main Content -->
         <div class="grid-2col">
-            <!-- App Usage -->
-            <div class="card">
-                <h2>💻 アプリ使用時間</h2>
-                <div class="app-list" id="appList">
-                    <div class="empty-state">
-                        <div class="icon">📭</div>
-                        <p>データがありません</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Work Phase Breakdown -->
-            <div class="card">
-                <h2>🏷 作業工程の内訳</h2>
-                <div class="chart-container">
-                    <canvas id="phaseChart"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <div class="grid-2col">
             <!-- Timeline -->
             <div class="card">
                 <h2>📋 タイムライン</h2>
@@ -610,6 +590,27 @@
                         <div class="icon">📅</div>
                         <p>カレンダー連携が設定されていません</p>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid-2col">
+            <!-- App Usage -->
+            <div class="card">
+                <h2>💻 アプリ使用時間</h2>
+                <div class="app-list" id="appList">
+                    <div class="empty-state">
+                        <div class="icon">📭</div>
+                        <p>データがありません</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Work Phase Breakdown -->
+            <div class="card">
+                <h2>🏷 作業工程の内訳</h2>
+                <div class="chart-container">
+                    <canvas id="phaseChart"></canvas>
                 </div>
             </div>
         </div>
@@ -708,6 +709,7 @@
         // --- API Calls ---
         async function loadDate(dateStr) {
             currentDate = dateStr;
+            document.getElementById('summaryLink').href = `/summary/${dateStr}`;
             try {
                 const res = await fetch(`/api/daily/${dateStr}`);
                 const data = await res.json();
@@ -860,6 +862,7 @@
                                     const data = chart.data;
                                     return data.labels.map((label, i) => ({
                                         text: `${label}  (${data.datasets[0].data[i]}分)`,
+                                        fontColor: '#e6edf3',
                                         fillStyle: data.datasets[0].backgroundColor[i],
                                         strokeStyle: '#1c2333',
                                         lineWidth: 2,

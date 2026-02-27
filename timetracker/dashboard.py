@@ -18,6 +18,8 @@ from .database import (
     get_calendar_events,
     get_weekly_trend,
     update_activity_tags,
+    update_activity_tags_by_time,
+    get_time_blocks,
 )
 
 
@@ -152,6 +154,67 @@ def create_app():
             project=project,
         )
         return jsonify({"updated": updated})
+
+    # --- 日次サマリーページ ---
+    @app.route("/summary")
+    @app.route("/summary/<target_date>")
+    def summary_page(target_date=None):
+        """10分ブロック単位のタグ一括編集ページ"""
+        if target_date is None:
+            target_date = date.today().isoformat()
+        return render_template("summary.html", target_date=target_date)
+
+    @app.route("/api/time-blocks/<target_date>")
+    def api_time_blocks(target_date):
+        """10分ブロックにまとめたサマリーを返す"""
+        block_minutes = request.args.get("block_minutes", 10, type=int)
+        blocks = get_time_blocks(target_date, block_minutes)
+        return jsonify({"date": target_date, "blocks": blocks})
+
+    @app.route("/api/update-block-tags", methods=["POST"])
+    def api_update_block_tags():
+        """10分ブロック単位でタグを一括更新する（アプリ不問）"""
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+
+        start_time = data.get("start_time")
+        end_time = data.get("end_time")
+        work_phase = data.get("work_phase")
+        project = data.get("project")
+
+        if not start_time or not end_time:
+            return jsonify({"error": "start_time and end_time are required"}), 400
+
+        updated = update_activity_tags_by_time(
+            start_time=start_time,
+            end_time=end_time,
+            work_phase=work_phase,
+            project=project,
+        )
+        return jsonify({"updated": updated})
+
+    @app.route("/api/add-tag", methods=["POST"])
+    def api_add_tag():
+        """タグカテゴリに新しい値を追加する"""
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+
+        category = data.get("category")  # "task_categories" or "cost_categories"
+        value = data.get("value", "").strip()
+
+        if category not in ("task_categories", "cost_categories"):
+            return jsonify({"error": "category must be task_categories or cost_categories"}), 400
+        if not value:
+            return jsonify({"error": "value is required"}), 400
+
+        from .config import add_tag_to_config
+        success = add_tag_to_config(category, value)
+        if success:
+            return jsonify({"ok": True, "message": f"Added '{value}' to {category}"})
+        else:
+            return jsonify({"ok": False, "message": f"'{value}' already exists in {category}"})
 
     return app
 

@@ -390,3 +390,108 @@ def update_activity_tags(
             params,
         )
         return cursor.rowcount
+
+
+def update_activity_tags_by_time(
+    start_time: str,
+    end_time: str,
+    work_phase: Optional[str] = None,
+    project: Optional[str] = None,
+) -> int:
+    """指定期間の全アクティビティログの work_phase と project を一括更新する（アプリ不問）"""
+    updates = []
+    params = []
+    if work_phase is not None:
+        updates.append("work_phase = ?")
+        params.append(work_phase)
+    if project is not None:
+        updates.append("project = ?")
+        params.append(project)
+    if not updates:
+        return 0
+
+    params.extend([start_time, end_time])
+
+    with get_connection() as conn:
+        cursor = conn.execute(
+            f"""UPDATE activity_log
+            SET {', '.join(updates)}
+            WHERE timestamp >= ? AND timestamp < ? AND is_idle = 0""",
+            params,
+        )
+        return cursor.rowcount
+
+
+def get_time_blocks(target_date: Optional[str] = None, block_minutes: int = 10) -> list[dict]:
+    """指定日のアクティビティを N 分ブロックにまとめたサマリーを返す"""
+    if target_date is None:
+        target_date = date.today().isoformat()
+
+    with get_connection() as conn:
+        rows = conn.execute(
+            """SELECT
+                timestamp, app_name, window_title, tab_title,
+                duration_seconds, work_phase, project, category
+            FROM activity_log
+            WHERE date(timestamp) = ? AND is_idle = 0
+            ORDER BY timestamp ASC""",
+            (target_date,),
+        ).fetchall()
+
+    blocks = []
+    for row in rows:
+        r = dict(row)
+        ts = r["timestamp"]
+        # HH:MM からブロック開始時刻を決定
+        try:
+            dt = datetime.fromisoformat(ts)
+        except (ValueError, TypeError):
+            continue
+        block_start_min = (dt.hour * 60 + dt.minute) // block_minutes * block_minutes
+        block_h, block_m = divmod(block_start_min, 60)
+        block_key = f"{block_h:02d}:{block_m:02d}"
+        block_start = f"{target_date}T{block_key}:00"
+        block_end_min = block_start_min + block_minutes
+        be_h, be_m = divmod(block_end_min, 60)
+        block_end = f"{target_date}T{be_h:02d}:{be_m:02d}:00"
+
+        # 既存ブロックに追加 or 新規ブロック
+        if blocks and blocks[-1]["block_start"] == block_start:
+            blk = blocks[-1]
+            blk["total_seconds"] += r["duration_seconds"] or 0
+            blk["record_count"] += 1
+            # アプリ集計
+            app = r["app_name"] or ""
+            blk["apps"][app] = blk["apps"].get(app, 0) + (r["duration_seconds"] or 0)
+            # work_phase / project の多数決用カウント
+            wp = r["work_phase"] or ""
+            blk["_wp_counts"][wp] = blk["_wp_counts"].get(wp, 0) + (r["duration_seconds"] or 0)
+            pj = r["project"] or ""
+            blk["_pj_counts"][pj] = blk["_pj_counts"].get(pj, 0) + (r["duration_seconds"] or 0)
+        else:
+            app = r["app_name"] or ""
+            wp = r["work_phase"] or ""
+            pj = r["project"] or ""
+            blocks.append({
+                "block_start": block_start,
+                "block_end": block_end,
+                "block_label": block_key,
+                "total_seconds": r["duration_seconds"] or 0,
+                "record_count": 1,
+                "apps": {app: r["duration_seconds"] or 0},
+                "_wp_counts": {wp: r["duration_seconds"] or 0},
+                "_pj_counts": {pj: r["duration_seconds"] or 0},
+            })
+
+    # 多数決で work_phase / project を決定し、内部カウントを除去
+    for blk in blocks:
+        wp_counts = blk.pop("_wp_counts")
+        pj_counts = blk.pop("_pj_counts")
+        blk["work_phase"] = max(wp_counts, key=wp_counts.get) if wp_counts else ""
+        blk["project"] = max(pj_counts, key=pj_counts.get) if pj_counts else ""
+        # アプリを秒数順にソートしてリスト化
+        sorted_apps = sorted(blk["apps"].items(), key=lambda x: -x[1])
+        blk["top_apps"] = [{"app": a, "seconds": s} for a, s in sorted_apps[:3]]
+        del blk["apps"]
+
+    return blocks

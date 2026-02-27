@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TimeTracker - 日次サマリー</title>
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-card: #1c2333;
+            --border: #30363d;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-purple: #bc8cff;
+            --accent-orange: #f0883e;
+            --accent-red: #f85149;
+            --accent-yellow: #d29922;
+            --accent-cyan: #39d2c0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        header h1::before {
+            content: "📋";
+            font-size: 28px;
+        }
+
+        .nav-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .nav-row button, .nav-row a {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+            text-decoration: none;
+        }
+
+        .nav-row button:hover, .nav-row a:hover {
+            background: var(--bg-card);
+        }
+
+        .nav-row input[type="date"] {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        /* Stats */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 18px;
+        }
+
+        .stat-card .label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-card .value {
+            font-size: 22px;
+            font-weight: 700;
+            margin: 2px 0;
+        }
+
+        .stat-card.blue .value { color: var(--accent-blue); }
+        .stat-card.green .value { color: var(--accent-green); }
+
+        /* Toolbar */
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .toolbar label {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .toolbar select, .toolbar input[type="text"] {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        .toolbar button {
+            background: var(--accent-blue);
+            border: none;
+            color: #fff;
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .toolbar button:hover { opacity: 0.85; }
+
+        .toolbar button.secondary {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+        }
+
+        /* Block Table */
+        .block-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .block-table thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .block-table th {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            padding: 8px 10px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 12px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .block-table td {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 6px 10px;
+            vertical-align: middle;
+        }
+
+        .block-table tr:hover td {
+            background: var(--bg-secondary);
+        }
+
+        .block-table tr.selected td {
+            background: rgba(88, 166, 255, 0.12);
+            border-color: var(--accent-blue);
+        }
+
+        .block-time {
+            font-weight: 600;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .block-apps {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .block-app-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 11px;
+            white-space: nowrap;
+        }
+
+        .block-app-chip .app-sec {
+            color: var(--text-secondary);
+            font-size: 10px;
+        }
+
+        .block-duration {
+            text-align: right;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .block-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .block-tag.phase {
+            background: rgba(88, 166, 255, 0.15);
+            color: var(--accent-blue);
+        }
+
+        .block-tag.project {
+            background: rgba(188, 140, 255, 0.15);
+            color: var(--accent-purple);
+        }
+
+        .block-tag.empty {
+            background: rgba(139, 148, 158, 0.1);
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        /* Checkbox column */
+        .block-table .cb-col {
+            width: 30px;
+            text-align: center;
+        }
+
+        .block-table input[type="checkbox"] {
+            accent-color: var(--accent-blue);
+            width: 15px;
+            height: 15px;
+            cursor: pointer;
+        }
+
+        /* Bulk edit bar */
+        .bulk-bar {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--bg-card);
+            border-top: 1px solid var(--border);
+            padding: 12px 24px;
+            z-index: 100;
+            box-shadow: 0 -4px 16px rgba(0,0,0,0.3);
+        }
+
+        .bulk-bar.active { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+        .bulk-bar .bulk-count {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent-blue);
+            min-width: 100px;
+        }
+
+        .bulk-bar select {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        .bulk-bar label {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .bulk-bar button {
+            padding: 8px 20px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .bulk-bar button.primary {
+            background: var(--accent-blue);
+            color: #fff;
+        }
+
+        .bulk-bar button.cancel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+        }
+
+        .bulk-bar button:hover { opacity: 0.85; }
+        .bulk-bar button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Tag management section */
+        .tag-mgmt {
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        .tag-mgmt h2 {
+            font-size: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tag-mgmt-row {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .tag-mgmt-col {
+            flex: 1;
+            min-width: 300px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px;
+        }
+
+        .tag-mgmt-col h3 {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .tag-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .tag-item {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+        }
+
+        .add-tag-row {
+            display: flex;
+            gap: 6px;
+        }
+
+        .add-tag-row input {
+            flex: 1;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        .add-tag-row button {
+            background: var(--accent-green);
+            border: none;
+            color: #fff;
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .add-tag-row button:hover { opacity: 0.85; }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 70px;
+            right: 24px;
+            background: var(--accent-green);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            z-index: 2000;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .toast.show { opacity: 1; }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state .icon { font-size: 40px; margin-bottom: 10px; }
+
+        /* Table wrapper for bottom padding when bulk-bar is visible */
+        .table-wrap { padding-bottom: 80px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>日次サマリー</h1>
+            <div class="nav-row">
+                <a href="/">← ダッシュボード</a>
+                <button onclick="changeDate(-1)">← 前日</button>
+                <input type="date" id="datePicker" onchange="goToDate(this.value)">
+                <button onclick="changeDate(1)">翌日 →</button>
+                <button onclick="goToday()">今日</button>
+            </div>
+        </header>
+
+        <!-- Stats -->
+        <div class="stats-row">
+            <div class="stat-card blue">
+                <div class="label">合計作業時間</div>
+                <div class="value" id="totalTime">--</div>
+            </div>
+            <div class="stat-card green">
+                <div class="label">ブロック数</div>
+                <div class="value" id="blockCount">--</div>
+            </div>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <label>選択: </label>
+            <button class="secondary" onclick="selectAll()">全選択</button>
+            <button class="secondary" onclick="deselectAll()">全解除</button>
+            <button class="secondary" onclick="selectUntagged()">未タグのみ</button>
+        </div>
+
+        <!-- Block Table -->
+        <div class="table-wrap">
+            <table class="block-table">
+                <thead>
+                    <tr>
+                        <th class="cb-col"><input type="checkbox" id="checkAll" onchange="toggleAll(this.checked)"></th>
+                        <th>時間帯</th>
+                        <th>アプリ</th>
+                        <th>作業時間</th>
+                        <th>作業工程</th>
+                        <th>プロジェクト</th>
+                    </tr>
+                </thead>
+                <tbody id="blockBody">
+                    <tr>
+                        <td colspan="6">
+                            <div class="empty-state">
+                                <div class="icon">📭</div>
+                                <p>読み込み中...</p>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Tag Management -->
+        <div class="tag-mgmt">
+            <h2>⚙️ タグ管理</h2>
+            <div class="tag-mgmt-row">
+                <div class="tag-mgmt-col">
+                    <h3>作業工程（タスク分類）</h3>
+                    <div class="tag-list" id="taskTagList"></div>
+                    <div class="add-tag-row">
+                        <input type="text" id="newTaskTag" placeholder="新しい作業工程を追加...">
+                        <button onclick="addTag('task_categories')">＋ 追加</button>
+                    </div>
+                </div>
+                <div class="tag-mgmt-col">
+                    <h3>プロジェクト（費用分類）</h3>
+                    <div class="tag-list" id="costTagList"></div>
+                    <div class="add-tag-row">
+                        <input type="text" id="newCostTag" placeholder="新しいプロジェクトを追加...">
+                        <button onclick="addTag('cost_categories')">＋ 追加</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Edit Bar -->
+    <div class="bulk-bar" id="bulkBar">
+        <span class="bulk-count" id="bulkCount">0 件選択中</span>
+        <label>作業工程:</label>
+        <select id="bulkWorkPhase">
+            <option value="">(変更しない)</option>
+        </select>
+        <label>プロジェクト:</label>
+        <select id="bulkProject">
+            <option value="">(変更しない)</option>
+        </select>
+        <button class="primary" id="bulkSaveBtn" onclick="bulkSave()">一括保存</button>
+        <button class="cancel" onclick="deselectAll()">キャンセル</button>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // --- State ---
+        let currentDate = '{{ target_date }}';
+        let blocks = [];
+        let selected = new Set();
+        let tagOptions = null;
+
+        // --- Init ---
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('datePicker').value = currentDate;
+            loadBlocks();
+            loadTagOptions();
+        });
+
+        // --- Navigation ---
+        function changeDate(delta) {
+            const d = new Date(currentDate);
+            d.setDate(d.getDate() + delta);
+            goToDate(d.toISOString().split('T')[0]);
+        }
+
+        function goToday() {
+            goToDate(new Date().toISOString().split('T')[0]);
+        }
+
+        function goToDate(dateStr) {
+            window.location.href = `/summary/${dateStr}`;
+        }
+
+        // --- API ---
+        async function loadBlocks() {
+            try {
+                const res = await fetch(`/api/time-blocks/${currentDate}`);
+                const data = await res.json();
+                blocks = data.blocks || [];
+                renderBlocks();
+                updateStats();
+            } catch (err) {
+                console.error('ブロック取得エラー:', err);
+            }
+        }
+
+        async function loadTagOptions() {
+            try {
+                const res = await fetch('/api/tag-options');
+                tagOptions = await res.json();
+                populateSelects();
+                renderTagLists();
+            } catch (err) {
+                console.error('タグ選択肢取得エラー:', err);
+                tagOptions = { task_categories: [], cost_categories: [] };
+            }
+        }
+
+        // --- Render ---
+        function renderBlocks() {
+            const tbody = document.getElementById('blockBody');
+            if (blocks.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6">
+                    <div class="empty-state">
+                        <div class="icon">📭</div>
+                        <p>この日のデータはありません</p>
+                    </div>
+                </td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = blocks.map((b, idx) => {
+                const isSelected = selected.has(idx);
+                const topApps = (b.top_apps || []).map(a =>
+                    `<span class="block-app-chip">${escapeHtml(a.app)} <span class="app-sec">${formatDuration(a.seconds)}</span></span>`
+                ).join('');
+
+                const wpTag = b.work_phase
+                    ? `<span class="block-tag phase">${escapeHtml(b.work_phase)}</span>`
+                    : `<span class="block-tag empty">—</span>`;
+                const pjTag = b.project
+                    ? `<span class="block-tag project">${escapeHtml(b.project)}</span>`
+                    : `<span class="block-tag empty">—</span>`;
+
+                return `<tr class="${isSelected ? 'selected' : ''}" data-idx="${idx}">
+                    <td class="cb-col">
+                        <input type="checkbox" ${isSelected ? 'checked' : ''}
+                               onchange="toggleSelect(${idx}, this.checked)">
+                    </td>
+                    <td class="block-time">${b.block_label}</td>
+                    <td><div class="block-apps">${topApps}</div></td>
+                    <td class="block-duration">${formatDuration(b.total_seconds)}</td>
+                    <td>${wpTag}</td>
+                    <td>${pjTag}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function updateStats() {
+            const totalSec = blocks.reduce((s, b) => s + (b.total_seconds || 0), 0);
+            document.getElementById('totalTime').textContent = formatDuration(totalSec);
+            document.getElementById('blockCount').textContent = blocks.length;
+        }
+
+        function populateSelects() {
+            if (!tagOptions) return;
+            const wpSel = document.getElementById('bulkWorkPhase');
+            const pjSel = document.getElementById('bulkProject');
+
+            wpSel.innerHTML = '<option value="">(変更しない)</option>' +
+                tagOptions.task_categories.map(c =>
+                    `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`
+                ).join('');
+
+            pjSel.innerHTML = '<option value="">(変更しない)</option>' +
+                '<option value="__clear__">(クリア)</option>' +
+                tagOptions.cost_categories.map(c =>
+                    `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`
+                ).join('');
+        }
+
+        function renderTagLists() {
+            if (!tagOptions) return;
+            document.getElementById('taskTagList').innerHTML =
+                tagOptions.task_categories.map(c =>
+                    `<span class="tag-item">${escapeHtml(c)}</span>`
+                ).join('');
+            document.getElementById('costTagList').innerHTML =
+                tagOptions.cost_categories.map(c =>
+                    `<span class="tag-item">${escapeHtml(c)}</span>`
+                ).join('');
+        }
+
+        // --- Selection ---
+        function toggleSelect(idx, checked) {
+            if (checked) selected.add(idx);
+            else selected.delete(idx);
+            updateBulkBar();
+            renderBlocks();
+        }
+
+        function toggleAll(checked) {
+            if (checked) {
+                blocks.forEach((_, i) => selected.add(i));
+            } else {
+                selected.clear();
+            }
+            updateBulkBar();
+            renderBlocks();
+        }
+
+        function selectAll() {
+            document.getElementById('checkAll').checked = true;
+            toggleAll(true);
+        }
+
+        function deselectAll() {
+            document.getElementById('checkAll').checked = false;
+            toggleAll(false);
+        }
+
+        function selectUntagged() {
+            selected.clear();
+            blocks.forEach((b, i) => {
+                if (!b.work_phase && !b.project) selected.add(i);
+            });
+            updateBulkBar();
+            renderBlocks();
+        }
+
+        function updateBulkBar() {
+            const bar = document.getElementById('bulkBar');
+            if (selected.size > 0) {
+                bar.classList.add('active');
+                document.getElementById('bulkCount').textContent = `${selected.size} 件選択中`;
+            } else {
+                bar.classList.remove('active');
+            }
+        }
+
+        // --- Bulk Save ---
+        async function bulkSave() {
+            const wp = document.getElementById('bulkWorkPhase').value;
+            const pj = document.getElementById('bulkProject').value;
+
+            if (!wp && !pj) {
+                showToast('⚠️ 変更する項目を選択してください');
+                return;
+            }
+
+            const btn = document.getElementById('bulkSaveBtn');
+            btn.disabled = true;
+            btn.textContent = '保存中...';
+
+            let totalUpdated = 0;
+            const promises = [...selected].map(async (idx) => {
+                const b = blocks[idx];
+                const body = {
+                    start_time: b.block_start,
+                    end_time: b.block_end,
+                };
+                if (wp) body.work_phase = wp;
+                if (pj === '__clear__') body.project = '';
+                else if (pj) body.project = pj;
+
+                try {
+                    const res = await fetch('/api/update-block-tags', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body),
+                    });
+                    const result = await res.json();
+                    totalUpdated += result.updated || 0;
+                } catch (err) {
+                    console.error('ブロック更新エラー:', err);
+                }
+            });
+
+            await Promise.all(promises);
+
+            showToast(`✅ ${totalUpdated} 件のレコードを更新しました`);
+            btn.disabled = false;
+            btn.textContent = '一括保存';
+            selected.clear();
+            updateBulkBar();
+            loadBlocks();
+        }
+
+        // --- Tag Management ---
+        async function addTag(category) {
+            const inputId = category === 'task_categories' ? 'newTaskTag' : 'newCostTag';
+            const input = document.getElementById(inputId);
+            const value = input.value.trim();
+            if (!value) return;
+
+            try {
+                const res = await fetch('/api/add-tag', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ category, value }),
+                });
+                const result = await res.json();
+                if (result.ok) {
+                    showToast(`✅ "${value}" を追加しました`);
+                    input.value = '';
+                    // リロード
+                    tagOptions = null;
+                    await loadTagOptions();
+                } else {
+                    showToast(`⚠️ ${result.message}`);
+                }
+            } catch (err) {
+                showToast('❌ 追加に失敗しました');
+                console.error('タグ追加エラー:', err);
+            }
+        }
+
+        // Add tag on Enter key
+        document.getElementById('newTaskTag')?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') addTag('task_categories');
+        });
+        document.getElementById('newCostTag')?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') addTag('cost_categories');
+        });
+
+        // --- Utilities ---
+        function formatDuration(seconds) {
+            if (!seconds || seconds <= 0) return '0m';
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            if (h > 0) return `${h}h ${m}m`;
+            return `${m}m`;
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str || '';
+            return div.innerHTML;
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+    </script>
+</body>
+</html>

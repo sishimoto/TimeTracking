@@ -73,3 +73,36 @@ def ensure_data_dir():
     data_dir = os.path.dirname(db_path)
     Path(data_dir).mkdir(parents=True, exist_ok=True)
     return data_dir
+
+
+def add_tag_to_config(category: str, value: str) -> bool:
+    """config.yaml の classification_rules にタグを追加し、ファイルに書き戻す
+
+    Args:
+        category: "task_categories" または "cost_categories"
+        value: 追加するタグ値
+
+    Returns:
+        追加成功なら True、既に存在していたら False
+    """
+    global _config
+    cfg = get_config()
+    rules = cfg.setdefault("classification_rules", {})
+    tags = rules.setdefault(category, [])
+
+    if value in tags:
+        return False
+
+    tags.append(value)
+
+    # YAML ファイルに書き戻す
+    config_path = _DEFAULT_CONFIG_PATH
+    with open(config_path, "r", encoding="utf-8") as f:
+        raw = yaml.safe_load(f)
+
+    raw.setdefault("classification_rules", {})[category] = tags
+
+    with open(config_path, "w", encoding="utf-8") as f:
+        yaml.dump(raw, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
+
+    return True

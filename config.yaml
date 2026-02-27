@@ -1,139 +1,145 @@
-# TimeTracker Configuration
-# =========================
-
 monitor:
-  # アクティブウィンドウのチェック間隔（秒）
   interval_seconds: 5
-  # アイドル検出の閾値（秒）- この時間マウス/キーボード操作がなければアイドルとみなす
   idle_threshold_seconds: 300
-
 database:
-  # SQLiteデータベースのパス
-  path: "~/.timetracker/timetracker.db"
-
+  path: ~/.timetracker/timetracker.db
 dashboard:
-  # Webダッシュボードのポート
   port: 5555
-  host: "127.0.0.1"
-
-# ブラウザタブ監視対象
+  host: 127.0.0.1
 browser_apps:
-  - "Google Chrome"
-  - "Safari"
-  - "Firefox"
-  - "Arc"
-  - "Microsoft Edge"
-
-# アクティビティ分類ルール（2軸分類体系）
-# ===========================================
-# 1. タスク分類 (work_phase): プロジェクトタイプ + サブフェーズ
-#    例: "カスタム開発-実装", "プロダクト開発-設計"
-# 2. 費用分類 (project): 会計上の費用/資産計上区分
-#    例: "Impulse個別開発", "Impulse製品開発（共通機能の改良・強化）"
+- Google Chrome
+- Safari
+- Firefox
+- Arc
+- Microsoft Edge
 classification_rules:
-
-  # デフォルトプロジェクトタイプ（どのルールにもマッチしない場合）
-  default_project_type: "カスタム開発"
-
-  # プロジェクトタイプ判定ルール（上から順に評価、最初にマッチしたものを採用）
-  # ウィンドウタイトル・URLからリポジトリ名やプロジェクト名を判定
+  default_project_type: カスタム開発
   project_types:
-    # impulse-pj-xxx → カスタム開発（個別開発）
-    - type: "カスタム開発"
-      keywords: ["impulse-pj-"]
-      cost_category: "Impulse個別開発"
-    # impulse で始まるが pj が付かない → プロダクト開発
-    - type: "プロダクト開発"
-      keywords: ["(?<!-pj-)\\bimpulse\\b(?!-pj-)"]
-      cost_category: "Impulse製品開発（共通機能の改良・強化）"
-    # その他のリポジトリ → カスタム開発（デフォルト）
-
-  # サブフェーズ判定ルール（使用アプリ・URL パターンから判定）
-  # タスク分類 = プロジェクトタイプ + サブフェーズ（例: "カスタム開発-実装"）
-  # ※ 上から順に評価し、最初にマッチしたものを採用（テスト → 設計 → 実装 の順）
+  - type: カスタム開発
+    keywords:
+    - impulse-pj-
+    cost_category: Impulse個別開発
+  - type: プロダクト開発
+    keywords:
+    - (?<!-pj-)\bimpulse\b(?!-pj-)
+    cost_category: Impulse製品開発（共通機能の改良・強化）
   sub_phases:
     テスト:
-      keywords: ["pytest", "unittest", "test.*result", "jest", "cypress"]
+      keywords:
+      - pytest
+      - unittest
+      - test.*result
+      - jest
+      - cypress
     設計:
-      keywords: ["Figma", "Sketch", "Miro", "draw\\.io", "whimsical"]
+      keywords:
+      - Figma
+      - Sketch
+      - Miro
+      - draw\.io
+      - whimsical
     要件定義:
-      keywords: ["要件", "requirement", "PRD"]
+      keywords:
+      - 要件
+      - requirement
+      - PRD
     実装:
-      keywords: ["Visual Studio Code", "IntelliJ", "Xcode", "Terminal", "iTerm", "Warp", "Cursor", "PyCharm", "WebStorm"]
-
-  # 独立カテゴリ（プロジェクトタイプと合成しない）
+      keywords:
+      - Visual Studio Code
+      - IntelliJ
+      - Xcode
+      - Terminal
+      - iTerm
+      - Warp
+      - Cursor
+      - PyCharm
+      - WebStorm
   standalone_phases:
     meeting:
-      keywords: ["Zoom", "Google Meet", "meet\\.google\\.com", "Microsoft Teams", "FaceTime"]
+      keywords:
+      - Zoom
+      - Google Meet
+      - meet\.google\.com
+      - Microsoft Teams
+      - FaceTime
     communication:
-      keywords: ["Slack", "Discord", "Messages", "LINE", "Telegram"]
+      keywords:
+      - Slack
+      - Discord
+      - Messages
+      - LINE
+      - Telegram
     email:
-      keywords: ["Mail", "Gmail", "Outlook", "mail\\.google\\.com"]
+      keywords:
+      - Mail
+      - Gmail
+      - Outlook
+      - mail\.google\.com
     documentation:
-      keywords: ["Notion", "Confluence", "Google Docs", "docs\\.google\\.com"]
+      keywords:
+      - Notion
+      - Confluence
+      - Google Docs
+      - docs\.google\.com
     planning:
-      keywords: ["Jira", "Linear", "Asana", "Trello", "GitHub Issues"]
+      keywords:
+      - Jira
+      - Linear
+      - Asana
+      - Trello
+      - GitHub Issues
     research:
-      keywords: ["stackoverflow\\.com", "qiita\\.com", "zenn\\.dev", "medium\\.com", "dev\\.to"]
-
-  # 費用分類の全選択肢（ダッシュボードでの手動選択用）
+      keywords:
+      - stackoverflow\.com
+      - qiita\.com
+      - zenn\.dev
+      - medium\.com
+      - dev\.to
   cost_categories:
-    - "Impulse営業活動"
-    - "Impulse技術調査・研究開発"
-    - "Impulse導入作業"
-    - "Impulseデータ分析・対応（PoC）"
-    - "Impulse製品開発（共通機能の改良・強化）"
-    - "Impulse個別開発"
-    - "Impulse製品開発（メジャーVerUp）"
-    - "Impulse保守開発・保守作業"
-
-  # タスク分類の全選択肢（ダッシュボードでの手動選択用）
+  - Impulse営業活動
+  - Impulse技術調査・研究開発
+  - Impulse導入作業
+  - Impulseデータ分析・対応（PoC）
+  - Impulse製品開発（共通機能の改良・強化）
+  - Impulse個別開発
+  - Impulse製品開発（メジャーVerUp）
+  - Impulse保守開発・保守作業
+  - 全社活動
+  - 教育
+  - その他
   task_categories:
-    - "分析"
-    - "カスタム開発-要件定義"
-    - "カスタム開発-設計"
-    - "カスタム開発-実装"
-    - "カスタム開発-テスト"
-    - "プロダクト開発-要件定義"
-    - "プロダクト開発-設計"
-    - "プロダクト開発-実装"
-    - "プロダクト開発-テスト"
-    - "導入-基本設計"
-    - "導入-導入試験・検証"
-    - "導入-導入作業"
-    - "導入-トレーニング・顧客説明"
-    - "meeting"
-    - "communication"
-    - "email"
-    - "documentation"
-    - "planning"
-    - "research"
-
-# Mac Calendar 設定（推奨：Google Calendar を Mac カレンダーに同期して使用）
+  - 分析
+  - カスタム開発-要件定義
+  - カスタム開発-設計
+  - カスタム開発-実装
+  - カスタム開発-テスト
+  - プロダクト開発-要件定義
+  - プロダクト開発-設計
+  - プロダクト開発-実装
+  - プロダクト開発-テスト
+  - 導入-基本設計
+  - 導入-導入試験・検証
+  - 導入-導入作業
+  - 導入-トレーニング・顧客説明
+  - meeting
+  - communication
+  - email
+  - documentation
+  - planning
+  - research
+  - other
 mac_calendar:
   enabled: true
-  # 同期間隔（秒）デフォルト 3600 = 1時間
   sync_interval_seconds: 3600
-  # 取得対象カレンダー名（空リスト = システムカレンダー以外全て）
   calendar_names:
-    - "ishimoto.shintaro@brains-tech.co.jp"
-  # calendar_names:
-  #   - "個人"
-  #   - "仕事"
-
-# Google Calendar 設定（Mac Calendar が使えない場合のフォールバック）
+  - ishimoto.shintaro@brains-tech.co.jp
 google_calendar:
   enabled: false
-  credentials_path: "~/.timetracker/credentials.json"
-  token_path: "~/.timetracker/token.json"
-  # 取得するカレンダーID（"primary" はメインカレンダー）
+  credentials_path: ~/.timetracker/credentials.json
+  token_path: ~/.timetracker/token.json
   calendar_ids:
-    - "primary"
-
-# Slack 設定
+  - primary
 slack:
   enabled: false
-  # Bot User OAuth Token (xoxb-...)
-  token: ""
-  # 監視対象のワークスペース名
-  workspace_name: ""
+  token: ''
+  workspace_name: ''
