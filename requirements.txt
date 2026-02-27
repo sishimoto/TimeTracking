@@ -5,9 +5,6 @@ pyobjc-framework-Quartz>=10.0
 pyobjc-framework-ApplicationServices>=10.0
 pyobjc-framework-ScriptingBridge>=10.0
 
-# Mac Calendar (EventKit) integration
-pyobjc-framework-EventKit>=10.0
-
 # Menu bar app
 rumps>=0.4.0
 

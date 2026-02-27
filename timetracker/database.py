@@ -61,9 +61,16 @@ def init_db():
             attendees TEXT,
             location TEXT,
             calendar_id TEXT,
+            is_all_day INTEGER DEFAULT 0,
             synced_at TEXT
         )
     """)
+
+    # 既存テーブルに is_all_day カラムがない場合は追加
+    try:
+        c.execute("ALTER TABLE calendar_events ADD COLUMN is_all_day INTEGER DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass  # 既に存在する
 
     # Slackアクティビティ
     c.execute("""
@@ -288,8 +295,8 @@ def insert_calendar_event(event_data: dict):
         conn.execute(
             """INSERT OR REPLACE INTO calendar_events
             (event_id, title, description, start_time, end_time,
-             attendees, location, calendar_id, synced_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+             attendees, location, calendar_id, is_all_day, synced_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 event_data.get("event_id", ""),
                 event_data.get("title", ""),
@@ -299,6 +306,7 @@ def insert_calendar_event(event_data: dict):
                 event_data.get("attendees", ""),
                 event_data.get("location", ""),
                 event_data.get("calendar_id", ""),
+                int(event_data.get("is_all_day", False)),
                 datetime.now().isoformat(),
             ),
         )

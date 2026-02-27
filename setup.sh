@@ -61,6 +61,39 @@ echo "   2. 「Terminal」または「iTerm2」（使用中のターミナル）
 echo "   3. macOS 14以降の場合、「画面収録」の権限も必要な場合があります"
 echo ""
 
+# CalHelper.app のビルド（Mac Calendar 連携用）
+if [ -f "CalHelper.swift" ]; then
+    echo ""
+    echo "📅 CalHelper.app をビルド中..."
+    mkdir -p CalHelper.app/Contents/MacOS
+    if [ ! -f "CalHelper.app/Contents/Info.plist" ]; then
+        cat > CalHelper.app/Contents/Info.plist <<'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>com.timetracker.calhelper</string>
+    <key>CFBundleName</key>
+    <string>CalHelper</string>
+    <key>CFBundleExecutable</key>
+    <string>CalHelper</string>
+    <key>CFBundleVersion</key>
+    <string>1.0</string>
+    <key>LSBackgroundOnly</key>
+    <true/>
+    <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>TimeTracker needs calendar access to show your schedule.</string>
+</dict>
+</plist>
+PLIST
+    fi
+    swiftc -framework Cocoa -framework EventKit CalHelper.swift -o CalHelper.app/Contents/MacOS/CalHelper
+    echo "✅ CalHelper.app をビルドしました"
+else
+    echo "⚠️  CalHelper.swift が見つかりません。Mac Calendar 連携は無効です。"
+fi
+
 # データベースの初期化
 echo "🗃  データベースを初期化中..."
 $PYTHON_CMD -c "

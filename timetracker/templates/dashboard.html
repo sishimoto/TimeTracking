@@ -900,15 +900,21 @@
             }
 
             container.innerHTML = events.map(evt => {
-                const start = new Date(evt.start_time).toLocaleTimeString('ja-JP', {
-                    hour: '2-digit', minute: '2-digit'
-                });
-                const end = new Date(evt.end_time).toLocaleTimeString('ja-JP', {
-                    hour: '2-digit', minute: '2-digit'
-                });
+                let timeLabel;
+                if (evt.is_all_day) {
+                    timeLabel = '終日';
+                } else {
+                    const start = new Date(evt.start_time).toLocaleTimeString('ja-JP', {
+                        hour: '2-digit', minute: '2-digit'
+                    });
+                    const end = new Date(evt.end_time).toLocaleTimeString('ja-JP', {
+                        hour: '2-digit', minute: '2-digit'
+                    });
+                    timeLabel = `${start} - ${end}`;
+                }
                 return `
                     <div class="event-item">
-                        <span class="event-time">${start} - ${end}</span>
+                        <span class="event-time">${timeLabel}</span>
                         <div>
                             <div class="event-title">${escapeHtml(evt.title || '')}</div>
                             ${evt.attendees ? `<div class="event-attendees">👥 ${escapeHtml(evt.attendees)}</div>` : ''}

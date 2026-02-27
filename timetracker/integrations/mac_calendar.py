@@ -180,6 +180,7 @@ class MacCalendarSync:
                 "attendees": "",
                 "location": event.get("location", ""),
                 "calendar_id": cal_name,
+                "is_all_day": event.get("is_all_day", False),
             }
 
             insert_calendar_event(event_data)

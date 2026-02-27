@@ -59,7 +59,8 @@ mac_calendar:
   # 同期間隔（秒）デフォルト 3600 = 1時間
   sync_interval_seconds: 3600
   # 取得対象カレンダー名（空リスト = システムカレンダー以外全て）
-  calendar_names: []
+  calendar_names:
+    - "ishimoto.shintaro@brains-tech.co.jp"
   # calendar_names:
   #   - "個人"
   #   - "仕事"

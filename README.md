@@ -22,7 +22,8 @@
 - 日付ナビゲーション / 30秒自動更新
 
 ### 統合機能（オプション）
-- **Google Calendar連携** - 打ち合わせの参加者・時間を自動取得
+- **Mac Calendar連携** - macOS カレンダー経由で Google Calendar 等の予定を自動取得・表示
+- **Google Calendar連携** - API直接連携で打ち合わせの参加者・時間を自動取得
 - **Slack連携** - アクティブチャンネル・会話相手を記録
 - **CSVエクスポート** - データを外部ツールで分析可能
 
@@ -38,6 +39,8 @@ timetracking/
 │   └── copilot-instructions.md  # AIコーディングエージェント用指示
 ├── docs/
 │   └── TODO.md                  # ロードマップ / 機能管理
+├── CalHelper.swift              # Mac Calendar ヘルパー（Swift）
+├── CalHelper.app/               # ビルド済みヘルパー（.app バンドル）
 └── timetracker/
     ├── __init__.py
     ├── config.py                # 設定管理
@@ -51,6 +54,7 @@ timetracking/
     └── integrations/
         ├── __init__.py
         ├── google_calendar.py   # Google Calendar連携
+        ├── mac_calendar.py      # Mac Calendar連携（CalHelper経由）
         └── slack_tracker.py     # Slack連携
 ```
 
@@ -151,6 +155,28 @@ URLやウィンドウタイトルに指定キーワードが含まれる場合�
 - `planning` - Jira, Linear等
 - `research` - StackOverflow, Qiita等
 - `email` - メールアプリ
+
+### Mac Calendar連携（推奨）
+
+macOS のカレンダーアプリに Google Calendar 等を同期させることで、予定をダッシュボードに表示できます。
+
+1. **macOS カレンダーに Google アカウントを追加**
+   - システム設定 → インターネットアカウント → Google → カレンダーを有効化
+2. **CalHelper.app をビルド**（`setup.sh` 実行時に自動ビルドされます）
+   ```bash
+   swiftc -framework Cocoa -framework EventKit CalHelper.swift -o CalHelper.app/Contents/MacOS/CalHelper
+   ```
+3. **初回実行時にカレンダーアクセスを許可**
+   - CalHelper.app が「カレンダーへのアクセスを許可しますか？」と聞いてくるので許可
+4. **`config.yaml` で設定**
+   ```yaml
+   mac_calendar:
+     enabled: true
+     sync_interval_seconds: 3600
+     calendar_names:
+       - "your-email@example.com"
+   ```
+5. メニューバーアプリ起動後、1時間ごとに自動同期されます
 
 ### Google Calendar連携
 
