@@ -4,6 +4,42 @@
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
+
+# --install-agent オプション: LaunchAgent のインストールのみ実行
+if [ "$1" = "--install-agent" ]; then
+    echo "🚀 LaunchAgent をインストール中..."
+    PLIST_SRC="$SCRIPT_DIR/com.timetracker.app.plist.template"
+    PLIST_DST="$HOME/Library/LaunchAgents/com.timetracker.app.plist"
+    VENV_PYTHON="$SCRIPT_DIR/venv/bin/python"
+
+    if [ ! -f "$VENV_PYTHON" ]; then
+        echo "❌ venv が見つかりません。先に ./setup.sh を実行してください。"
+        exit 1
+    fi
+
+    # 既存の LaunchAgent を停止
+    launchctl unload "$PLIST_DST" 2>/dev/null || true
+
+    # テンプレートからplistを生成
+    sed -e "s|__VENV_PYTHON__|$VENV_PYTHON|g" \
+        -e "s|__PROJECT_DIR__|$SCRIPT_DIR|g" \
+        -e "s|__HOME__|$HOME|g" \
+        "$PLIST_SRC" > "$PLIST_DST"
+
+    # LaunchAgent を登録
+    launchctl load "$PLIST_DST"
+
+    echo "✅ LaunchAgent をインストールしました"
+    echo "   macOS ログイン時に自動起動します"
+    echo ""
+    echo "   停止: launchctl unload ~/Library/LaunchAgents/com.timetracker.app.plist"
+    echo "   再開: launchctl load ~/Library/LaunchAgents/com.timetracker.app.plist"
+    echo "   削除: launchctl unload ~/Library/LaunchAgents/com.timetracker.app.plist && rm ~/Library/LaunchAgents/com.timetracker.app.plist"
+    exit 0
+fi
+
 echo "⏱ TimeTracker セットアップ"
 echo "=========================="
 echo ""
@@ -110,18 +146,16 @@ print('✅ データベースを初期化しました')
 echo ""
 echo "🎉 セットアップ完了！"
 echo ""
-echo "使い方:"
-echo "  # 仮想環境を有効化"
-echo "  source venv/bin/activate"
+echo "起動方法:"
 echo ""
-echo "  # メニューバーアプリとして起動（推奨）"
-echo "  python main.py start"
+echo "  方法1: スクリプトで起動"
+echo "    ./start.sh"
 echo ""
-echo "  # CLIモードでモニタリング（テスト用）"
-echo "  python main.py monitor"
+echo "  方法2: ターミナルから起動"
+echo "    source venv/bin/activate && python main.py start"
 echo ""
-echo "  # ダッシュボードのみ起動"
-echo "  python main.py dashboard"
+echo "  方法3: macOS ログイン時に自動起動（LaunchAgent）"
+echo "    ./setup.sh --install-agent"
 echo ""
-echo "  # ダッシュボードURL: http://127.0.0.1:5555"
+echo "  ダッシュボードURL: http://127.0.0.1:5555"
 echo ""
