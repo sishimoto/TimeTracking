@@ -649,7 +649,8 @@
 
     <script>
         // --- State ---
-        let currentDate = new Date().toISOString().split('T')[0];
+        function localDateStr(d) { const o = d || new Date(); return `${o.getFullYear()}-${String(o.getMonth()+1).padStart(2,'0')}-${String(o.getDate()).padStart(2,'0')}`; }
+        let currentDate = localDateStr();
         let tagOptions = null;
         let editingEntry = null;
         let phaseChart = null;
@@ -685,7 +686,7 @@
             loadDate(currentDate);
             // 30秒ごとに自動更新
             setInterval(() => {
-                if (currentDate === new Date().toISOString().split('T')[0]) {
+                if (currentDate === localDateStr()) {
                     loadDate(currentDate);
                 }
             }, 30000);
@@ -695,13 +696,13 @@
         function changeDate(delta) {
             const d = new Date(currentDate);
             d.setDate(d.getDate() + delta);
-            currentDate = d.toISOString().split('T')[0];
+            currentDate = localDateStr(d);
             document.getElementById('datePicker').value = currentDate;
             loadDate(currentDate);
         }
 
         function loadToday() {
-            currentDate = new Date().toISOString().split('T')[0];
+            currentDate = localDateStr();
             document.getElementById('datePicker').value = currentDate;
             loadDate(currentDate);
         }

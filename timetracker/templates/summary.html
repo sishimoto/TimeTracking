@@ -560,11 +560,13 @@
         function changeDate(delta) {
             const d = new Date(currentDate);
             d.setDate(d.getDate() + delta);
-            goToDate(d.toISOString().split('T')[0]);
+            const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+            goToDate(ds);
         }
 
         function goToday() {
-            goToDate(new Date().toISOString().split('T')[0]);
+            const now = new Date();
+            goToDate(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`);
         }
 
         function goToDate(dateStr) {
