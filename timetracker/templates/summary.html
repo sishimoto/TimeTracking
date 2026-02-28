@@ -260,6 +260,27 @@
             font-style: italic;
         }
 
+        /* Block titles (tab/window info) */
+        .block-titles {
+            margin-top: 4px;
+            padding-left: 2px;
+        }
+
+        .block-title-line {
+            font-size: 11px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 400px;
+            line-height: 1.4;
+        }
+
+        .block-title-line::before {
+            content: "📄 ";
+            font-size: 10px;
+        }
+
         /* Checkbox column */
         .block-table .cb-col {
             width: 30px;
@@ -547,6 +568,7 @@
         let currentDate = '{{ target_date }}';
         let blocks = [];
         let selected = new Set();
+        let lastSelectedIdx = null;
         let tagOptions = null;
 
         // --- Init ---
@@ -616,6 +638,9 @@
                 const topApps = (b.top_apps || []).map(a =>
                     `<span class="block-app-chip">${escapeHtml(a.app)} <span class="app-sec">${formatDuration(a.seconds)}</span></span>`
                 ).join('');
+                const titles = (b.titles || []).map(t =>
+                    `<div class="block-title-line">${escapeHtml(t)}</div>`
+                ).join('');
 
                 const wpTag = b.work_phase
                     ? `<span class="block-tag phase">${escapeHtml(b.work_phase)}</span>`
@@ -624,13 +649,13 @@
                     ? `<span class="block-tag project">${escapeHtml(b.project)}</span>`
                     : `<span class="block-tag empty">—</span>`;
 
-                return `<tr class="${isSelected ? 'selected' : ''}" data-idx="${idx}">
+                return `<tr class="${isSelected ? 'selected' : ''}" data-idx="${idx}" onclick="onRowClick(event, ${idx})">
                     <td class="cb-col">
                         <input type="checkbox" ${isSelected ? 'checked' : ''}
-                               onchange="toggleSelect(${idx}, this.checked)">
+                               onclick="onCheckboxClick(event, ${idx})">
                     </td>
                     <td class="block-time">${b.block_label}</td>
-                    <td><div class="block-apps">${topApps}</div></td>
+                    <td><div class="block-apps">${topApps}</div>${titles ? `<div class="block-titles">${titles}</div>` : ''}</td>
                     <td class="block-duration">${formatDuration(b.total_seconds)}</td>
                     <td>${wpTag}</td>
                     <td>${pjTag}</td>
@@ -674,11 +699,38 @@
         }
 
         // --- Selection ---
-        function toggleSelect(idx, checked) {
-            if (checked) selected.add(idx);
-            else selected.delete(idx);
+        function onRowClick(event, idx) {
+            // 行クリックでトグル（Shift対応）
+            const willSelect = !selected.has(idx);
+            handleSelect(idx, willSelect, event.shiftKey);
+        }
+
+        function onCheckboxClick(event, idx) {
+            event.stopPropagation();
+            const willSelect = event.target.checked;
+            handleSelect(idx, willSelect, event.shiftKey);
+        }
+
+        function handleSelect(idx, checked, isShift) {
+            if (isShift && lastSelectedIdx !== null) {
+                // Shift+クリック: lastSelectedIdx から idx まで範囲選択/解除
+                const from = Math.min(lastSelectedIdx, idx);
+                const to = Math.max(lastSelectedIdx, idx);
+                for (let i = from; i <= to; i++) {
+                    if (checked) selected.add(i);
+                    else selected.delete(i);
+                }
+            } else {
+                if (checked) selected.add(idx);
+                else selected.delete(idx);
+            }
+            lastSelectedIdx = idx;
             updateBulkBar();
             renderBlocks();
+        }
+
+        function toggleSelect(idx, checked) {
+            handleSelect(idx, checked, false);
         }
 
         function toggleAll(checked) {

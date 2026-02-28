@@ -455,6 +455,11 @@ def get_time_blocks(target_date: Optional[str] = None, block_minutes: int = 10) 
         be_h, be_m = divmod(block_end_min, 60)
         block_end = f"{target_date}T{be_h:02d}:{be_m:02d}:00"
 
+        # タイトル情報
+        tab = r["tab_title"] or ""
+        win = r["window_title"] or ""
+        title_text = tab if tab else win
+
         # 既存ブロックに追加 or 新規ブロック
         if blocks and blocks[-1]["block_start"] == block_start:
             blk = blocks[-1]
@@ -468,10 +473,19 @@ def get_time_blocks(target_date: Optional[str] = None, block_minutes: int = 10) 
             blk["_wp_counts"][wp] = blk["_wp_counts"].get(wp, 0) + (r["duration_seconds"] or 0)
             pj = r["project"] or ""
             blk["_pj_counts"][pj] = blk["_pj_counts"].get(pj, 0) + (r["duration_seconds"] or 0)
+            # タイトル収集（ユニーク、最大5件）
+            if title_text and title_text not in blk["_titles_set"]:
+                blk["_titles_set"].add(title_text)
+                blk["_titles"].append(title_text)
         else:
             app = r["app_name"] or ""
             wp = r["work_phase"] or ""
             pj = r["project"] or ""
+            titles_set = set()
+            titles_list = []
+            if title_text:
+                titles_set.add(title_text)
+                titles_list.append(title_text)
             blocks.append({
                 "block_start": block_start,
                 "block_end": block_end,
@@ -481,6 +495,8 @@ def get_time_blocks(target_date: Optional[str] = None, block_minutes: int = 10) 
                 "apps": {app: r["duration_seconds"] or 0},
                 "_wp_counts": {wp: r["duration_seconds"] or 0},
                 "_pj_counts": {pj: r["duration_seconds"] or 0},
+                "_titles_set": titles_set,
+                "_titles": titles_list,
             })
 
     # 多数決で work_phase / project を決定し、内部カウントを除去
@@ -493,5 +509,8 @@ def get_time_blocks(target_date: Optional[str] = None, block_minutes: int = 10) 
         sorted_apps = sorted(blk["apps"].items(), key=lambda x: -x[1])
         blk["top_apps"] = [{"app": a, "seconds": s} for a, s in sorted_apps[:3]]
         del blk["apps"]
+        # タイトル一覧（最大5件）
+        blk["titles"] = blk.pop("_titles")[:5]
+        blk.pop("_titles_set", None)
 
     return blocks
