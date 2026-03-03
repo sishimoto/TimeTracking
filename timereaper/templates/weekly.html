@@ -350,6 +350,57 @@
         @media (max-width: 700px) {
             .grid-2col { grid-template-columns: 1fr; }
             .day-grid { grid-template-columns: repeat(2, 1fr); }
+            .stats-row { grid-template-columns: repeat(2, 1fr); }
+            .chart-container { height: 250px; }
+            .chart-container.tall { height: 280px; }
+        }
+        @media (max-width: 600px) {
+            .container { padding: 12px; }
+
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            header h1 { font-size: 20px; }
+            header h1::before { font-size: 22px; }
+
+            .nav-row {
+                width: 100%;
+                flex-wrap: wrap;
+                gap: 6px;
+            }
+            .nav-row button, .nav-row a {
+                font-size: 12px;
+                padding: 5px 8px;
+            }
+            .nav-row .week-label {
+                min-width: 0;
+                font-size: 13px;
+                flex: 1;
+            }
+
+            .stats-row { gap: 8px; }
+            .stat-card { padding: 14px; }
+            .stat-card .value { font-size: 22px; }
+
+            .day-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+            .day-card { padding: 10px; }
+            .day-card .day-total { font-size: 16px; }
+            .day-phase-row .phase-name { max-width: 60px; }
+
+            .chart-container { height: 220px; }
+            .chart-container.tall { height: 250px; }
+
+            .card { padding: 14px; }
+            .card h2 { font-size: 14px; }
+
+            .breakdown-item { gap: 6px; }
+            .breakdown-name { font-size: 12px; }
+            .breakdown-time { font-size: 12px; min-width: 50px; }
+
+            .app-week-table { font-size: 11px; }
+            .app-week-table th, .app-week-table td { padding: 4px 6px; }
         }
     </style>
 </head>
