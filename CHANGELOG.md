@@ -25,6 +25,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/lang/ja/).
 - REST API: /api/settings, /api/pomodoro/status, /api/pomodoro/<action>
 - 全ページに⚙設定リンク追加
 
+### Fixed
+- .app バンドルでのアップデートチェッカー修正
+  - requests/urllib3/certifi を .app バンドルに同梱
+  - pre-release も検出するよう GitHub API を /releases/latest → /releases に変更
+  - .app 環境での DMG ダウンロード → 自動インストール → 再起動フローを実装
+  - 開発環境では従来の git pull、.app では DMG 方式を自動切替
+
 ## [0.3.1] - 2026-03-03
 
 ### Fixed
