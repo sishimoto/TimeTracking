@@ -17,6 +17,7 @@ from .database import (
     get_project_summary,
     get_calendar_events,
     get_weekly_trend,
+    get_weekly_report,
     update_activity_tags,
     update_activity_tags_by_time,
     get_time_blocks,
@@ -163,6 +164,21 @@ def create_app():
         if target_date is None:
             target_date = date.today().isoformat()
         return render_template("summary.html", target_date=target_date)
+
+    # --- 週次レポートページ ---
+    @app.route("/weekly")
+    @app.route("/weekly/<target_date>")
+    def weekly_page(target_date=None):
+        """週次レポートページ"""
+        if target_date is None:
+            target_date = date.today().isoformat()
+        return render_template("weekly.html", target_date=target_date)
+
+    @app.route("/api/weekly-report/<target_date>")
+    def api_weekly_report(target_date):
+        """指定日を含む週の詳細レポートを返す"""
+        report = get_weekly_report(target_date)
+        return jsonify(report)
 
     @app.route("/api/time-blocks/<target_date>")
     def api_time_blocks(target_date):

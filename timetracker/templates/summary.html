@@ -469,6 +469,7 @@
             <h1>日次サマリー</h1>
             <div class="nav-row">
                 <a href="/">← ダッシュボード</a>
+                <a href="/weekly">📊 週次</a>
                 <button onclick="changeDate(-1)">← 前日</button>
                 <input type="date" id="datePicker" onchange="goToDate(this.value)">
                 <button onclick="changeDate(1)">翌日 →</button>
@@ -490,6 +491,18 @@
 
         <!-- Toolbar -->
         <div class="toolbar">
+            <label>フィルタ: </label>
+            <select id="filterPhase" onchange="applyFilters()">
+                <option value="">全作業工程</option>
+            </select>
+            <select id="filterProject" onchange="applyFilters()">
+                <option value="">全プロジェクト</option>
+            </select>
+            <select id="filterApp" onchange="applyFilters()">
+                <option value="">全アプリ</option>
+            </select>
+            <button class="secondary" onclick="clearFilters()">クリア</button>
+            <span style="flex:1"></span>
             <label>選択: </label>
             <button class="secondary" onclick="selectAll()">全選択</button>
             <button class="secondary" onclick="deselectAll()">全解除</button>
@@ -569,6 +582,7 @@
         // --- State ---
         let currentDate = '{{ target_date }}';
         let blocks = [];
+        let filteredIndices = null; // null = no filter, array = visible indices
         let selected = new Set();
         let lastSelectedIdx = null;
         let tagOptions = null;
@@ -635,7 +649,20 @@
                 return;
             }
 
-            tbody.innerHTML = blocks.map((b, idx) => {
+            const visibleIndices = filteredIndices !== null ? filteredIndices : blocks.map((_, i) => i);
+
+            if (visibleIndices.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6">
+                    <div class="empty-state">
+                        <div class="icon">🔍</div>
+                        <p>フィルタ条件に一致するブロックがありません</p>
+                    </div>
+                </td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = visibleIndices.map(idx => {
+                const b = blocks[idx];
                 const isSelected = selected.has(idx);
                 const topApps = (b.top_apps || []).map(a =>
                     `<span class="block-app-chip">${escapeHtml(a.app)} <span class="app-sec">${formatDuration(a.seconds)}</span></span>`
@@ -666,9 +693,11 @@
         }
 
         function updateStats() {
-            const totalSec = blocks.reduce((s, b) => s + (b.total_seconds || 0), 0);
+            const visibleIndices = filteredIndices !== null ? filteredIndices : blocks.map((_, i) => i);
+            const totalSec = visibleIndices.reduce((s, idx) => s + (blocks[idx].total_seconds || 0), 0);
             document.getElementById('totalTime').textContent = formatDuration(totalSec);
-            document.getElementById('blockCount').textContent = blocks.length;
+            const suffix = filteredIndices !== null ? ` / ${blocks.length}` : '';
+            document.getElementById('blockCount').textContent = visibleIndices.length + suffix;
         }
 
         function populateSelects() {
@@ -686,6 +715,73 @@
                 tagOptions.cost_categories.map(c =>
                     `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`
                 ).join('');
+
+            // フィルタセレクトを自動的にデータから生成
+            populateFilterSelects();
+        }
+
+        function populateFilterSelects() {
+            const phases = new Set();
+            const projects = new Set();
+            const apps = new Set();
+            blocks.forEach(b => {
+                if (b.work_phase) phases.add(b.work_phase);
+                if (b.project) projects.add(b.project);
+                (b.top_apps || []).forEach(a => { if (a.app) apps.add(a.app); });
+            });
+
+            const fPhase = document.getElementById('filterPhase');
+            const fProject = document.getElementById('filterProject');
+            const fApp = document.getElementById('filterApp');
+
+            const curPhase = fPhase.value;
+            const curProject = fProject.value;
+            const curApp = fApp.value;
+
+            fPhase.innerHTML = '<option value="">全作業工程</option>' +
+                [...phases].sort().map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+            fProject.innerHTML = '<option value="">全プロジェクト</option>' +
+                [...projects].sort().map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+            fApp.innerHTML = '<option value="">全アプリ</option>' +
+                [...apps].sort().map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+
+            // 以前の選択を復元
+            fPhase.value = curPhase;
+            fProject.value = curProject;
+            fApp.value = curApp;
+        }
+
+        function applyFilters() {
+            const fPhase = document.getElementById('filterPhase').value;
+            const fProject = document.getElementById('filterProject').value;
+            const fApp = document.getElementById('filterApp').value;
+
+            if (!fPhase && !fProject && !fApp) {
+                filteredIndices = null;
+            } else {
+                filteredIndices = [];
+                blocks.forEach((b, idx) => {
+                    let match = true;
+                    if (fPhase && b.work_phase !== fPhase) match = false;
+                    if (fProject && b.project !== fProject) match = false;
+                    if (fApp) {
+                        const hasApp = (b.top_apps || []).some(a => a.app === fApp);
+                        if (!hasApp) match = false;
+                    }
+                    if (match) filteredIndices.push(idx);
+                });
+            }
+            renderBlocks();
+            updateStats();
+        }
+
+        function clearFilters() {
+            document.getElementById('filterPhase').value = '';
+            document.getElementById('filterProject').value = '';
+            document.getElementById('filterApp').value = '';
+            filteredIndices = null;
+            renderBlocks();
+            updateStats();
         }
 
         function renderTagLists() {

@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TimeTracker - 週次レポート</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-card: #1c2333;
+            --border: #30363d;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-purple: #bc8cff;
+            --accent-orange: #f0883e;
+            --accent-red: #f85149;
+            --accent-yellow: #d29922;
+            --accent-cyan: #39d2c0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        header h1::before {
+            content: "📊";
+            font-size: 28px;
+        }
+
+        .nav-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .nav-row button, .nav-row a {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+            text-decoration: none;
+        }
+
+        .nav-row button:hover, .nav-row a:hover {
+            background: var(--bg-card);
+        }
+
+        .nav-row .week-label {
+            font-size: 15px;
+            font-weight: 600;
+            min-width: 230px;
+            text-align: center;
+        }
+
+        /* Stats Cards */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .stat-card .label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .stat-card .value {
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .stat-card .sub {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .stat-card.blue .value { color: var(--accent-blue); }
+        .stat-card.green .value { color: var(--accent-green); }
+        .stat-card.purple .value { color: var(--accent-purple); }
+        .stat-card.orange .value { color: var(--accent-orange); }
+
+        /* Grid layout */
+        .grid-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .grid-full {
+            margin-bottom: 24px;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .card h2 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Chart container */
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+
+        .chart-container.tall {
+            height: 350px;
+        }
+
+        /* Day grid */
+        .day-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+        }
+
+        .day-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            cursor: pointer;
+            transition: border-color 0.2s, transform 0.15s;
+        }
+
+        .day-card:hover {
+            border-color: var(--accent-blue);
+            transform: translateY(-2px);
+        }
+
+        .day-card.today {
+            border-color: var(--accent-green);
+        }
+
+        .day-card .day-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 8px;
+        }
+
+        .day-card .day-name {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        .day-card .day-date {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .day-card .day-total {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--accent-blue);
+            margin-bottom: 6px;
+        }
+
+        .day-card .day-phases {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .day-phase-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+        }
+
+        .day-phase-row .phase-name {
+            color: var(--text-secondary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 80px;
+        }
+
+        .day-phase-row .phase-time {
+            font-weight: 500;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Progress bar for each day */
+        .day-progress {
+            height: 4px;
+            background: var(--bg-primary);
+            border-radius: 2px;
+            margin-top: 8px;
+            overflow: hidden;
+            display: flex;
+        }
+
+        .day-progress-segment {
+            height: 100%;
+            min-width: 2px;
+        }
+
+        /* Project/Phase breakdown list */
+        .breakdown-list {
+            max-height: 350px;
+            overflow-y: auto;
+        }
+
+        .breakdown-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+            gap: 10px;
+        }
+
+        .breakdown-item:last-child { border-bottom: none; }
+
+        .breakdown-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .breakdown-name {
+            flex: 1;
+            font-size: 14px;
+        }
+
+        .breakdown-bar-wrap {
+            flex: 1;
+            height: 8px;
+            background: var(--bg-primary);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .breakdown-bar {
+            height: 100%;
+            border-radius: 4px;
+        }
+
+        .breakdown-time {
+            font-size: 14px;
+            font-weight: 500;
+            font-variant-numeric: tabular-nums;
+            min-width: 60px;
+            text-align: right;
+        }
+
+        /* Top apps table */
+        .app-week-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .app-week-table th {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            padding: 6px 10px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .app-week-table td {
+            border: 1px solid var(--border);
+            padding: 6px 10px;
+        }
+
+        .app-week-table tr:hover td {
+            background: var(--bg-secondary);
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state .icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        /* Responsive */
+        @media (max-width: 1100px) {
+            .day-grid { grid-template-columns: repeat(4, 1fr); }
+        }
+        @media (max-width: 700px) {
+            .grid-2col { grid-template-columns: 1fr; }
+            .day-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>週次レポート</h1>
+            <div class="nav-row">
+                <a href="/">← ダッシュボード</a>
+                <button onclick="changeWeek(-1)">← 前週</button>
+                <span class="week-label" id="weekLabel">--</span>
+                <button onclick="changeWeek(1)">翌週 →</button>
+                <button onclick="goThisWeek()">今週</button>
+            </div>
+        </header>
+
+        <!-- Stats -->
+        <div class="stats-row">
+            <div class="stat-card blue">
+                <div class="label">週合計</div>
+                <div class="value" id="weekTotal">--</div>
+                <div class="sub" id="weekTotalSub"></div>
+            </div>
+            <div class="stat-card green">
+                <div class="label">日平均</div>
+                <div class="value" id="dailyAvg">--</div>
+                <div class="sub">稼働日ベース</div>
+            </div>
+            <div class="stat-card purple">
+                <div class="label">最多作業</div>
+                <div class="value" id="topPhase">--</div>
+                <div class="sub" id="topPhaseSub"></div>
+            </div>
+            <div class="stat-card orange">
+                <div class="label">プロジェクト数</div>
+                <div class="value" id="projectCount">--</div>
+                <div class="sub">アクティブ</div>
+            </div>
+        </div>
+
+        <!-- Day Grid -->
+        <div class="grid-full">
+            <div class="card">
+                <h2>📅 日別サマリー</h2>
+                <div class="day-grid" id="dayGrid">
+                    <div class="empty-state"><div class="icon">⏳</div><p>読み込み中...</p></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Daily stacked bar chart -->
+        <div class="grid-full">
+            <div class="card">
+                <h2>📊 日別作業内訳</h2>
+                <div class="chart-container tall">
+                    <canvas id="dailyChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase & Project breakdown -->
+        <div class="grid-2col">
+            <div class="card">
+                <h2>🏷 作業工程の内訳</h2>
+                <div class="chart-container">
+                    <canvas id="phaseChart"></canvas>
+                </div>
+                <div class="breakdown-list" id="phaseList" style="margin-top: 16px;"></div>
+            </div>
+            <div class="card">
+                <h2>📁 プロジェクト別</h2>
+                <div class="chart-container">
+                    <canvas id="projectChart"></canvas>
+                </div>
+                <div class="breakdown-list" id="projectList" style="margin-top: 16px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- State ---
+        let baseDate = '{{ target_date }}';
+        let weekData = null;
+        let dailyChart = null;
+        let phaseChart = null;
+        let projectChart = null;
+
+        const DAY_NAMES = ['月', '火', '水', '木', '金', '土', '日'];
+
+        const PHASE_COLORS = {
+            'implementation': '#58a6ff',
+            'カスタム開発': '#58a6ff',
+            'design': '#bc8cff',
+            'カスタム開発-設計': '#bc8cff',
+            '設計': '#bc8cff',
+            'communication': '#f0883e',
+            'review': '#3fb950',
+            'documentation': '#d29922',
+            'planning': '#39d2c0',
+            'research': '#f778ba',
+            'meeting': '#f85149',
+            'email': '#8b949e',
+            '(未分類)': '#444c56',
+        };
+
+        const COLOR_PALETTE = [
+            '#58a6ff', '#3fb950', '#f0883e', '#bc8cff', '#d29922',
+            '#39d2c0', '#f778ba', '#f85149', '#8b949e', '#79c0ff',
+            '#56d364', '#e3b341', '#d2a8ff', '#a5d6ff', '#7ee787',
+        ];
+
+        function getPhaseColor(phase) {
+            return PHASE_COLORS[phase] || COLOR_PALETTE[Math.abs(hashStr(phase)) % COLOR_PALETTE.length];
+        }
+
+        function hashStr(s) {
+            let h = 0;
+            for (let i = 0; i < s.length; i++) {
+                h = ((h << 5) - h) + s.charCodeAt(i);
+                h |= 0;
+            }
+            return h;
+        }
+
+        // --- Init ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadWeek(baseDate);
+        });
+
+        // --- Navigation ---
+        function changeWeek(delta) {
+            const d = new Date(baseDate);
+            d.setDate(d.getDate() + delta * 7);
+            baseDate = toDateStr(d);
+            loadWeek(baseDate);
+        }
+
+        function goThisWeek() {
+            baseDate = toDateStr(new Date());
+            loadWeek(baseDate);
+        }
+
+        function toDateStr(d) {
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        }
+
+        // --- API ---
+        async function loadWeek(dateStr) {
+            try {
+                const res = await fetch(`/api/weekly-report/${dateStr}`);
+                weekData = await res.json();
+                renderAll();
+            } catch (err) {
+                console.error('週次データ取得エラー:', err);
+            }
+        }
+
+        // --- Render All ---
+        function renderAll() {
+            if (!weekData) return;
+            updateHeader();
+            updateStats();
+            renderDayGrid();
+            renderDailyChart();
+            renderPhaseChart();
+            renderProjectChart();
+        }
+
+        function updateHeader() {
+            const ws = new Date(weekData.week_start);
+            const we = new Date(weekData.week_end);
+            const fmt = (d) => `${d.getMonth()+1}/${d.getDate()}`;
+            document.getElementById('weekLabel').textContent =
+                `${ws.getFullYear()}年 ${fmt(ws)} (月) 〜 ${fmt(we)} (日)`;
+        }
+
+        function updateStats() {
+            const t = weekData.totals;
+            document.getElementById('weekTotal').textContent = formatDuration(t.total_seconds);
+            document.getElementById('weekTotalSub').textContent =
+                `${Math.round(t.total_seconds / 60)} 分`;
+
+            // 稼働日数
+            const activeDays = weekData.days.filter(d => d.total_seconds > 0).length;
+            const avg = activeDays > 0 ? Math.round(t.total_seconds / activeDays) : 0;
+            document.getElementById('dailyAvg').textContent = formatDuration(avg);
+
+            // 最多作業工程
+            const phases = Object.entries(t.by_phase).sort((a, b) => b[1] - a[1]);
+            if (phases.length > 0) {
+                document.getElementById('topPhase').textContent = phases[0][0];
+                document.getElementById('topPhaseSub').textContent = formatDuration(phases[0][1]);
+            }
+
+            // プロジェクト数（未分類除く）
+            const pjCount = Object.keys(t.by_project).filter(p => p !== '(未分類)').length;
+            document.getElementById('projectCount').textContent = pjCount;
+        }
+
+        // --- Day Grid ---
+        function renderDayGrid() {
+            const grid = document.getElementById('dayGrid');
+            const todayStr = toDateStr(new Date());
+
+            grid.innerHTML = weekData.days.map((day, idx) => {
+                const isToday = day.date === todayStr;
+                const phases = Object.entries(day.by_phase)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 3);
+                const totalSec = day.total_seconds;
+
+                // Progress bar segments
+                const segHtml = totalSec > 0 ? Object.entries(day.by_phase)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([p, s]) =>
+                        `<div class="day-progress-segment" style="width:${(s/totalSec*100).toFixed(1)}%;background:${getPhaseColor(p)}"></div>`
+                    ).join('') : '';
+
+                return `
+                <div class="day-card ${isToday ? 'today' : ''}" onclick="window.location.href='/summary/${day.date}'">
+                    <div class="day-header">
+                        <span class="day-name">${DAY_NAMES[idx]}</span>
+                        <span class="day-date">${day.date.slice(5)}</span>
+                    </div>
+                    <div class="day-total">${totalSec > 0 ? formatDuration(totalSec) : '--'}</div>
+                    <div class="day-phases">
+                        ${phases.map(([p, s]) => `
+                            <div class="day-phase-row">
+                                <span class="phase-name">${escapeHtml(p)}</span>
+                                <span class="phase-time">${formatDuration(s)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="day-progress">${segHtml}</div>
+                </div>`;
+            }).join('');
+        }
+
+        // --- Daily Stacked Bar Chart ---
+        function renderDailyChart() {
+            const ctx = document.getElementById('dailyChart').getContext('2d');
+            if (dailyChart) dailyChart.destroy();
+
+            // 全フェーズを収集
+            const allPhases = new Set();
+            weekData.days.forEach(d => Object.keys(d.by_phase).forEach(p => allPhases.add(p)));
+            const phaseArr = [...allPhases].sort();
+
+            const labels = weekData.days.map((d, i) => `${DAY_NAMES[i]} ${d.date.slice(5)}`);
+
+            const datasets = phaseArr.map(phase => ({
+                label: phase,
+                data: weekData.days.map(d => Math.round((d.by_phase[phase] || 0) / 60)),
+                backgroundColor: getPhaseColor(phase),
+            }));
+
+            dailyChart = new Chart(ctx, {
+                type: 'bar',
+                data: { labels, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            stacked: true,
+                            ticks: { color: '#8b949e' },
+                            grid: { color: '#30363d' },
+                        },
+                        y: {
+                            stacked: true,
+                            ticks: { color: '#8b949e', callback: v => v + '分' },
+                            grid: { color: '#30363d' },
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: { color: '#e6edf3', font: { size: 11 }, boxWidth: 12 },
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => `${ctx.dataset.label}: ${ctx.raw}分`
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- Phase Doughnut ---
+        function renderPhaseChart() {
+            const ctx = document.getElementById('phaseChart').getContext('2d');
+            if (phaseChart) phaseChart.destroy();
+
+            const phases = Object.entries(weekData.totals.by_phase).sort((a, b) => b[1] - a[1]);
+            if (phases.length === 0) { phaseChart = null; return; }
+
+            const labels = phases.map(p => p[0]);
+            const values = phases.map(p => Math.round(p[1] / 60));
+            const colors = labels.map(l => getPhaseColor(l));
+
+            phaseChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels,
+                    datasets: [{ data: values, backgroundColor: colors, borderColor: '#1c2333', borderWidth: 2 }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                color: '#e6edf3', font: { size: 11 }, padding: 8,
+                                generateLabels: (chart) => chart.data.labels.map((label, i) => ({
+                                    text: `${label} (${chart.data.datasets[0].data[i]}分)`,
+                                    fontColor: '#e6edf3',
+                                    fillStyle: chart.data.datasets[0].backgroundColor[i],
+                                    strokeStyle: '#1c2333', lineWidth: 2, index: i,
+                                }))
+                            }
+                        },
+                        tooltip: { callbacks: { label: ctx => `${ctx.label}: ${ctx.raw}分` } }
+                    }
+                }
+            });
+
+            // Breakdown list
+            const totalSec = weekData.totals.total_seconds || 1;
+            document.getElementById('phaseList').innerHTML = phases.map(([name, sec]) => `
+                <div class="breakdown-item">
+                    <div class="breakdown-dot" style="background:${getPhaseColor(name)}"></div>
+                    <div class="breakdown-name">${escapeHtml(name)}</div>
+                    <div class="breakdown-bar-wrap">
+                        <div class="breakdown-bar" style="width:${(sec/totalSec*100).toFixed(1)}%;background:${getPhaseColor(name)}"></div>
+                    </div>
+                    <div class="breakdown-time">${formatDuration(sec)}</div>
+                </div>
+            `).join('');
+        }
+
+        // --- Project Chart ---
+        function renderProjectChart() {
+            const ctx = document.getElementById('projectChart').getContext('2d');
+            if (projectChart) projectChart.destroy();
+
+            const projects = Object.entries(weekData.totals.by_project).sort((a, b) => b[1] - a[1]);
+            if (projects.length === 0) { projectChart = null; return; }
+
+            const labels = projects.map(p => p[0]);
+            const values = projects.map(p => Math.round(p[1] / 60));
+            const colors = labels.map((_, i) => COLOR_PALETTE[i % COLOR_PALETTE.length]);
+
+            projectChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{ label: '作業時間', data: values, backgroundColor: colors }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    scales: {
+                        x: {
+                            ticks: { color: '#8b949e', callback: v => v + '分' },
+                            grid: { color: '#30363d' },
+                        },
+                        y: {
+                            ticks: { color: '#e6edf3', font: { size: 12 } },
+                            grid: { display: false },
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: ctx => `${ctx.raw}分` } }
+                    }
+                }
+            });
+
+            // Breakdown list
+            const totalSec = weekData.totals.total_seconds || 1;
+            document.getElementById('projectList').innerHTML = projects.map(([name, sec], i) => `
+                <div class="breakdown-item">
+                    <div class="breakdown-dot" style="background:${colors[i]}"></div>
+                    <div class="breakdown-name">${escapeHtml(name)}</div>
+                    <div class="breakdown-bar-wrap">
+                        <div class="breakdown-bar" style="width:${(sec/totalSec*100).toFixed(1)}%;background:${colors[i]}"></div>
+                    </div>
+                    <div class="breakdown-time">${formatDuration(sec)}</div>
+                </div>
+            `).join('');
+        }
+
+        // --- Utilities ---
+        function formatDuration(seconds) {
+            if (!seconds || seconds <= 0) return '0m';
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            if (h > 0) return `${h}h ${m}m`;
+            return `${m}m`;
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str || '';
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
