@@ -38,5 +38,5 @@ token.json
 CalHelper.app/Contents/MacOS/CalHelper
 
 # Generated assets (rebuild with scripts/generate_icon.py)
+# Note: AppIcon.png は正式アイコンとしてコミット対象
 assets/AppIcon.icns
-assets/AppIcon.png
