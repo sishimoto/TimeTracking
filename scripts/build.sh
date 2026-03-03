@@ -190,7 +190,7 @@ else
 fi
 
 # 4. テンプレートファイル
-for tmpl in dashboard.html summary.html weekly.html; do
+for tmpl in dashboard.html summary.html weekly.html settings.html; do
     if find "$APP_PATH" -name "$tmpl" | grep -q .; then
         log_info "  テンプレート $tmpl: OK"
     else

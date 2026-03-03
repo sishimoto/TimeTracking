@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/lang/ja/).
 
+## [0.4.0] - 2026-03-03
+
+### Added
+- ポモドーロタイマー統合 (pomodoro.py)
+  - 作業/短休憩/長休憩のカウントダウンタイマー
+  - セッションカウント、自動遷移、一時停止/再開/スキップ
+  - Web UI から操作可能、リアルタイムステータス表示
+  - タイマー完了時の macOS ネイティブ通知
+- 長時間作業アラート (LongWorkAlert)
+  - 連続作業時間が閾値を超えた場合に macOS 通知で休憩を促す
+  - アイドル復帰時に自動リセット
+  - 閾値・インターバル・メッセージのカスタマイズ
+- 設定ページ (/settings)
+  - ポモドーロ・長時間アラート・アイドル復帰サマリーの有効/無効切り替え
+  - 各パラメータのカスタマイズ (Web UI)
+  - ユーザー設定は ~/.timetracker/user_settings.json に保存
+  - 設定変更がメニューバーアプリに即座に反映
+- REST API: /api/settings, /api/pomodoro/status, /api/pomodoro/<action>
+- 全ページに⚙設定リンク追加
+
 ## [0.3.1] - 2026-03-03
 
 ### Fixed
