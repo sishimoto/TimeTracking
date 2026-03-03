@@ -38,12 +38,15 @@
         }
 
         header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
             margin-bottom: 24px;
             padding-bottom: 16px;
             border-bottom: 1px solid var(--border);
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         header h1 {
@@ -60,13 +63,13 @@
             vertical-align: middle;
         }
 
-        .nav-row {
+        .nav-links {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 8px;
         }
 
-        .nav-row a {
+        .nav-links a {
             background: var(--bg-secondary);
             border: 1px solid var(--border);
             color: var(--accent-blue);
@@ -77,7 +80,7 @@
             cursor: pointer;
             transition: background 0.2s;
         }
-        .nav-row a:hover { background: var(--bg-card); }
+        .nav-links a:hover { background: var(--bg-card); }
 
         /* Settings sections */
         .settings-section {
@@ -339,7 +342,7 @@
         @media (max-width: 600px) {
             .container { padding: 12px; }
 
-            header {
+            .header-top {
                 flex-direction: column;
                 align-items: flex-start;
                 gap: 8px;
@@ -347,12 +350,10 @@
             header h1 { font-size: 20px; }
             header h1 .app-icon { width: 22px; height: 22px; }
 
-            .nav-row {
+            .nav-links {
                 width: 100%;
-                flex-wrap: wrap;
-                gap: 6px;
             }
-            .nav-row a {
+            .nav-links a {
                 font-size: 12px;
                 padding: 5px 8px;
                 flex: 1;
@@ -379,11 +380,13 @@
 <body>
     <div class="container settings-container">
         <header>
-            <h1><img src="/static/icon-128.png" alt="" class="app-icon">設定 <span id="versionBadge" style="font-size: 11px; font-weight: 400; background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-secondary); padding: 2px 8px; border-radius: 10px; vertical-align: middle; margin-left: 6px;"></span></h1>
-            <div class="nav-row">
-                <a href="/">← ダッシュボード</a>
-                <a href="/summary">📋 日次サマリー</a>
-                <a href="/weekly">📊 週次レポート</a>
+            <div class="header-top">
+                <h1><img src="/static/icon-128.png" alt="" class="app-icon">設定 <span id="versionBadge" style="font-size: 11px; font-weight: 400; background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-secondary); padding: 2px 8px; border-radius: 10px; vertical-align: middle; margin-left: 6px;"></span></h1>
+                <div class="nav-links">
+                    <a href="/">← ダッシュボード</a>
+                    <a href="/summary">📋 日次サマリー</a>
+                    <a href="/weekly">📊 週次レポート</a>
+                </div>
             </div>
         </header>
 
