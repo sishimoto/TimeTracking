@@ -7,7 +7,7 @@ JSON ファイル経由でカレンダーイベントを取得します。
   - EventKit は .app バンドルとして `open` コマンドで起動しないと
     Internet Account（Google Calendar 等）のソースにアクセスできない
   - CalHelper.app は EventKit で全カレンダーを高速にクエリし、
-    ~/.timetracker/cal_helper_output.json に結果を書き出す
+    ~/.timereaper/cal_helper_output.json に結果を書き出す
   - Python 側は CalHelper を起動 → JSON を読み取り → DB に保存
 """
 
@@ -42,7 +42,7 @@ def _find_calhelper() -> Path:
     return _PROJECT_ROOT / "CalHelper.app"
 
 CALHELPER_APP = _find_calhelper()
-CALHELPER_OUTPUT = Path.home() / ".timetracker" / "cal_helper_output.json"
+CALHELPER_OUTPUT = Path.home() / ".timereaper" / "cal_helper_output.json"
 
 # CalHelper の応答待ち最大時間（秒）
 CALHELPER_TIMEOUT = 30

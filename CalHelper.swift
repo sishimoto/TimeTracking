@@ -2,8 +2,8 @@ import Foundation
 import EventKit
 import Cocoa
 
-// CalHelper: Calendar event helper for TimeTracker
-// Outputs calendar events as JSON to stdout and ~/.timetracker/cal_helper_output.json
+// CalHelper: Calendar event helper for TimeReaper
+// Outputs calendar events as JSON to stdout and ~/.timereaper/cal_helper_output.json
 //
 // Usage:
 //   open CalHelper.app --args --list-calendars
@@ -136,13 +136,13 @@ class CalendarHelper {
             let jsonData = try JSONSerialization.data(withJSONObject: data, options: [.prettyPrinted, .sortedKeys])
             if let jsonString = String(data: jsonData, encoding: .utf8) {
                 // Write to output file
-                let outputPath = NSHomeDirectory() + "/.timetracker/cal_helper_output.json"
+                let outputPath = NSHomeDirectory() + "/.timereaper/cal_helper_output.json"
                 try jsonString.write(toFile: outputPath, atomically: true, encoding: .utf8)
                 print(jsonString)
             }
         } catch {
             let errMsg = "JSON serialization error: \(error)"
-            let outputPath = NSHomeDirectory() + "/.timetracker/cal_helper_output.json"
+            let outputPath = NSHomeDirectory() + "/.timereaper/cal_helper_output.json"
             try? "{\"error\": \"\(errMsg)\"}".write(toFile: outputPath, atomically: true, encoding: .utf8)
         }
     }

@@ -2,7 +2,7 @@ monitor:
   interval_seconds: 5
   idle_threshold_seconds: 300
 database:
-  path: ~/.timetracker/timetracker.db
+  path: ~/.timereaper/timereaper.db
 dashboard:
   port: 5555
   host: 127.0.0.1
@@ -135,8 +135,8 @@ mac_calendar:
   - ishimoto.shintaro@brains-tech.co.jp
 google_calendar:
   enabled: false
-  credentials_path: ~/.timetracker/credentials.json
-  token_path: ~/.timetracker/token.json
+  credentials_path: ~/.timereaper/credentials.json
+  token_path: ~/.timereaper/token.json
   calendar_ids:
   - primary
 slack:

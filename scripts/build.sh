@@ -1,5 +1,5 @@
 #!/bin/bash
-# TimeTracker ビルドスクリプト
+# TimeReaper ビルドスクリプト
 # macOS .app バンドルをビルドし、配布用の DMG を作成します。
 #
 # 使い方:
@@ -25,9 +25,9 @@ log_warn()  { echo -e "${YELLOW}⚠️  $1${NC}"; }
 log_error() { echo -e "${RED}❌ $1${NC}"; }
 
 # バージョン取得
-VERSION=$(python3 -c "import re; content=open('timetracker/__init__.py').read(); print(re.search(r\"__version__\s*=\s*['\\\"]([^'\\\"]+)\", content).group(1))")
+VERSION=$(python3 -c "import re; content=open('timereaper/__init__.py').read(); print(re.search(r\"__version__\s*=\s*['\\\"]([^'\\\"]+)\", content).group(1))")
 echo ""
-echo "⏱  TimeTracker Build v${VERSION}"
+echo "⏱  TimeReaper Build v${VERSION}"
 echo "================================"
 echo ""
 
@@ -68,9 +68,9 @@ done
 # 検証のみモード
 if $DO_VERIFY_ONLY; then
     echo "🔍 ビルド検証..."
-    APP_PATH="dist/TimeTracker.app"
+    APP_PATH="dist/TimeReaper.app"
     if [ ! -d "$APP_PATH" ]; then
-        log_error "dist/TimeTracker.app が見つかりません。先にビルドしてください。"
+        log_error "dist/TimeReaper.app が見つかりません。先にビルドしてください。"
         exit 1
     fi
     # 検証セクションにジャンプ
@@ -100,7 +100,7 @@ if ! $SKIP_BUILD; then
     log_info "py2app: インストール済み"
 
     # 必須ファイルチェック
-    for f in main.py config.yaml timetracker/__init__.py timetracker/templates/dashboard.html timetracker/templates/summary.html timetracker/templates/weekly.html timetracker/templates/settings.html; do
+    for f in main.py config.yaml timereaper/__init__.py timereaper/templates/dashboard.html timereaper/templates/summary.html timereaper/templates/weekly.html timereaper/templates/settings.html; do
         if [ ! -f "$f" ]; then
             log_error "必須ファイルが見つかりません: $f"
             exit 1
@@ -129,17 +129,17 @@ if ! $SKIP_BUILD; then
     echo "🔨 .app バンドルをビルド中..."
     python setup.py py2app 2>&1 | tail -5
 
-    if [ ! -d "dist/TimeTracker.app" ]; then
+    if [ ! -d "dist/TimeReaper.app" ]; then
         log_error "ビルドに失敗しました"
         exit 1
     fi
-    log_info ".app バンドルをビルドしました: dist/TimeTracker.app"
+    log_info ".app バンドルをビルドしました: dist/TimeReaper.app"
 
     # CalHelper.app を同梱
     if [ -d "CalHelper.app" ] && [ -f "CalHelper.app/Contents/MacOS/CalHelper" ]; then
         echo ""
         echo "📅 CalHelper.app を同梱中..."
-        HELPERS_DIR="dist/TimeTracker.app/Contents/Resources/CalHelper.app"
+        HELPERS_DIR="dist/TimeReaper.app/Contents/Resources/CalHelper.app"
         cp -R CalHelper.app "$HELPERS_DIR"
         log_info "CalHelper.app を同梱しました"
     else
@@ -147,11 +147,11 @@ if ! $SKIP_BUILD; then
     fi
 
     # config.yaml が Resources に含まれるか確認
-    if [ -f "dist/TimeTracker.app/Contents/Resources/config.yaml" ]; then
+    if [ -f "dist/TimeReaper.app/Contents/Resources/config.yaml" ]; then
         log_info "config.yaml: 同梱済み"
     else
         log_warn "config.yaml が .app に含まれていません。手動でコピーします..."
-        cp config.yaml "dist/TimeTracker.app/Contents/Resources/config.yaml"
+        cp config.yaml "dist/TimeReaper.app/Contents/Resources/config.yaml"
         log_info "config.yaml をコピーしました"
     fi
 
@@ -160,7 +160,7 @@ fi  # SKIP_BUILD
 # ===== ビルド検証 =====
 echo ""
 echo "🔍 ビルド検証..."
-APP_PATH="dist/TimeTracker.app"
+APP_PATH="dist/TimeReaper.app"
 ERRORS=0
 
 # 1. .app バンドル構造
@@ -173,7 +173,7 @@ for check_dir in Contents Contents/MacOS Contents/Resources; do
 done
 
 # 2. 実行ファイル
-if [ -x "$APP_PATH/Contents/MacOS/TimeTracker" ]; then
+if [ -x "$APP_PATH/Contents/MacOS/TimeReaper" ]; then
     log_info "  実行ファイル: OK"
 else
     log_error "  実行ファイルが見つかりません"
@@ -223,9 +223,9 @@ if $DO_DMG; then
 
     # プレリリース時はサフィックス付き
     if $DO_PRERELEASE; then
-        DMG_NAME="TimeTracker-v${VERSION}-rc.dmg"
+        DMG_NAME="TimeReaper-v${VERSION}-rc.dmg"
     else
-        DMG_NAME="TimeTracker-v${VERSION}.dmg"
+        DMG_NAME="TimeReaper-v${VERSION}.dmg"
     fi
     DMG_PATH="dist/$DMG_NAME"
 
@@ -242,7 +242,7 @@ if $DO_DMG; then
     ln -s /Applications "$DMG_STAGING/Applications"
 
     # DMG 作成
-    hdiutil create -volname "TimeTracker v${VERSION}" \
+    hdiutil create -volname "TimeReaper v${VERSION}" \
         -srcfolder "$DMG_STAGING" \
         -ov -format UDZO \
         "$DMG_PATH"
@@ -312,7 +312,7 @@ if $DO_RELEASE || $DO_PRERELEASE; then
         $RELEASE_FLAGS
 
     log_info "GitHub Release を作成しました: $TAG"
-    echo "  URL: https://github.com/sishimoto/TimeTracking/releases/tag/$TAG"
+    echo "  URL: https://github.com/sishimoto/TimeReaper/releases/tag/$TAG"
 fi
 
 # /Applications にインストール
@@ -321,18 +321,18 @@ if $DO_INSTALL; then
     echo "📲 /Applications にインストール中..."
 
     # 既存アプリを停止
-    pkill -f "TimeTracker.app" 2>/dev/null || true
+    pkill -f "TimeReaper.app" 2>/dev/null || true
     lsof -ti:5555 | xargs kill -9 2>/dev/null || true
     sleep 2
 
     # 既存アプリを削除してコピー
-    rm -rf /Applications/TimeTracker.app
-    cp -R dist/TimeTracker.app /Applications/
-    log_info "/Applications/TimeTracker.app にインストールしました"
+    rm -rf /Applications/TimeReaper.app
+    cp -R dist/TimeReaper.app /Applications/
+    log_info "/Applications/TimeReaper.app にインストールしました"
 
     echo ""
     echo "起動方法:"
-    echo "  open /Applications/TimeTracker.app"
+    echo "  open /Applications/TimeReaper.app"
 fi
 
 echo ""
@@ -340,6 +340,6 @@ echo "🎉 完了！"
 echo ""
 if ! $DO_INSTALL; then
     echo "テスト実行:"
-    echo "  open dist/TimeTracker.app"
+    echo "  open dist/TimeReaper.app"
     echo ""
 fi

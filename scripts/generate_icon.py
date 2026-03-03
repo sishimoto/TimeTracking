@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-TimeTracker アプリアイコン生成スクリプト
+TimeReaper アプリアイコン生成スクリプト
 Pillow を使用して .icns ファイルを生成します。
 
 使い方:

@@ -12,7 +12,7 @@ OpenAI API を使用して、未分類のアクティビティを一括で分類
        max_daily_calls: 50        # 1日あたりのAPI呼び出し上限
 
   2. ダッシュボードまたは CLI から実行:
-     python -m timetracker.llm_classifier --date 2026-03-03
+     python -m timereaper.llm_classifier --date 2026-03-03
 """
 
 import json
@@ -414,7 +414,7 @@ if __name__ == "__main__":
     import sys
     
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-    from timetracker.config import load_config
+    from timereaper.config import load_config
     
     parser = argparse.ArgumentParser(description="LLM ベースのアクティビティ自動分類")
     parser.add_argument("--date", default=None, help="対象日 (YYYY-MM-DD)")

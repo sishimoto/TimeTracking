@@ -19,7 +19,7 @@ def _find_config_path() -> str:
 
     # 2. py2app バンドル内の Resources/
     if hasattr(os, "environ") and "__PYVENV_LAUNCHER__" not in os.environ:
-        # バンドル: __file__ は .app/Contents/Resources/lib/python3.12/timetracker/config.py
+        # バンドル: __file__ は .app/Contents/Resources/lib/python3.12/timereaper/config.py
         bundle_resources = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
             os.pardir, os.pardir, os.pardir, "config.yaml"
@@ -29,7 +29,7 @@ def _find_config_path() -> str:
             return bundle_resources
 
     # 3. ユーザーデータディレクトリ
-    user_config = os.path.expanduser("~/.timetracker/config.yaml")
+    user_config = os.path.expanduser("~/.timereaper/config.yaml")
     if os.path.exists(user_config):
         return user_config
 
@@ -67,10 +67,37 @@ def get_config() -> dict[str, Any]:
 
 
 def ensure_data_dir():
-    """データディレクトリを作成する"""
+    """データディレクトリを作成する
+
+    旧ディレクトリ (~/.timetracker/) が存在し、新ディレクトリ (~/.timereaper/) が
+    まだ無い場合は自動的にリネームして移行する。
+    """
     cfg = get_config()
     db_path = cfg["database"]["path"]
     data_dir = os.path.dirname(db_path)
+
+    # 旧ディレクトリからの自動移行
+    old_data_dir = os.path.expanduser("~/.timetracker")
+    new_data_dir = os.path.expanduser("~/.timereaper")
+    if os.path.isdir(old_data_dir) and not os.path.isdir(new_data_dir):
+        import shutil
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"データディレクトリを移行中: {old_data_dir} → {new_data_dir}")
+        shutil.move(old_data_dir, new_data_dir)
+        # ファイル名もリネーム（timetracker.* → timereaper.*）
+        for old_name, new_name in [
+            ("timetracker.db", "timereaper.db"),
+            ("timetracker.log", "timereaper.log"),
+            ("timetracker.err", "timereaper.err"),
+        ]:
+            old_path = os.path.join(new_data_dir, old_name)
+            new_path = os.path.join(new_data_dir, new_name)
+            if os.path.exists(old_path) and not os.path.exists(new_path):
+                os.rename(old_path, new_path)
+                logger.info(f"  リネーム: {old_name} → {new_name}")
+        logger.info("データディレクトリの移行が完了しました")
+
     Path(data_dir).mkdir(parents=True, exist_ok=True)
     return data_dir
 

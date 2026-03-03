@@ -5,7 +5,7 @@
     <key>CFBundleExecutable</key>
     <string>CalHelper</string>
     <key>CFBundleIdentifier</key>
-    <string>com.timetracker.calhelper</string>
+    <string>com.timereaper.calhelper</string>
     <key>CFBundleName</key>
     <string>CalHelper</string>
     <key>CFBundleVersion</key>
@@ -17,8 +17,8 @@
     <key>LSUIElement</key>
     <true/>
     <key>NSCalendarsUsageDescription</key>
-    <string>TimeTracker needs access to your calendars to display your schedule.</string>
+    <string>TimeReaper needs access to your calendars to display your schedule.</string>
     <key>NSCalendarsFullAccessUsageDescription</key>
-    <string>TimeTracker needs full access to your calendars to display your schedule.</string>
+    <string>TimeReaper needs full access to your calendars to display your schedule.</string>
 </dict>
 </plist>

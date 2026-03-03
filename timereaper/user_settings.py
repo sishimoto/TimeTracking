@@ -1,7 +1,7 @@
 """
 ユーザー設定管理モジュール
 ポモドーロタイマーや通知などのユーザー個人設定を管理する。
-設定は ~/.timetracker/user_settings.json に保存される。
+設定は ~/.timereaper/user_settings.json に保存される。
 """
 
 import json
@@ -12,7 +12,7 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-_SETTINGS_PATH = Path.home() / ".timetracker" / "user_settings.json"
+_SETTINGS_PATH = Path.home() / ".timereaper" / "user_settings.json"
 
 # デフォルト設定
 _DEFAULTS: dict[str, Any] = {

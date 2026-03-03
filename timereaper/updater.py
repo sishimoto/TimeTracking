@@ -1,5 +1,5 @@
 """
-TimeTracker アップデートチェッカー
+TimeReaper アップデートチェッカー
 GitHub Releases API を使用して最新バージョンを確認し、
 アップデート通知と自動更新を提供する。
 """
@@ -15,13 +15,13 @@ from typing import Optional
 
 import requests
 
-from timetracker import __version__
+from timereaper import __version__
 
 logger = logging.getLogger(__name__)
 
 # GitHub リポジトリ情報
 GITHUB_OWNER = "sishimoto"
-GITHUB_REPO = "TimeTracking"
+GITHUB_REPO = "TimeReaper"
 GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases/latest"
 GITHUB_ALL_RELEASES_URL = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases"
 GITHUB_TAGS_URL = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/tags"
@@ -305,7 +305,7 @@ def perform_dmg_update(download_url: str) -> dict:
 
     1. DMG を一時ディレクトリにダウンロード
     2. DMG をマウント
-    3. TimeTracker.app を /Applications にコピー
+    3. TimeReaper.app を /Applications にコピー
     4. DMG をアンマウント・削除
     5. 新しい .app を起動して自分自身を終了
 
@@ -326,8 +326,8 @@ def perform_dmg_update(download_url: str) -> dict:
     mount_point = None
     try:
         # 1. ダウンロード
-        tmpdir = tempfile.mkdtemp(prefix="timetracker_update_")
-        dmg_path = os.path.join(tmpdir, "TimeTracker.dmg")
+        tmpdir = tempfile.mkdtemp(prefix="timereaper_update_")
+        dmg_path = os.path.join(tmpdir, "TimeReaper.dmg")
         logger.info(f"DMG ダウンロード中: {download_url}")
 
         resp = requests.get(download_url, stream=True, timeout=120)
@@ -351,12 +351,12 @@ def perform_dmg_update(download_url: str) -> dict:
                 "details": result.stderr,
             }
 
-        # 3. TimeTracker.app を探す
-        app_src = os.path.join(mount_point, "TimeTracker.app")
+        # 3. TimeReaper.app を探す
+        app_src = os.path.join(mount_point, "TimeReaper.app")
         if not os.path.isdir(app_src):
             # DMG 直下にない場合サブディレクトリを探す
             for item in os.listdir(mount_point):
-                candidate = os.path.join(mount_point, item, "TimeTracker.app")
+                candidate = os.path.join(mount_point, item, "TimeReaper.app")
                 if os.path.isdir(candidate):
                     app_src = candidate
                     break
@@ -364,12 +364,12 @@ def perform_dmg_update(download_url: str) -> dict:
         if not os.path.isdir(app_src):
             return {
                 "success": False,
-                "message": "DMG 内に TimeTracker.app が見つかりません",
+                "message": "DMG 内に TimeReaper.app が見つかりません",
                 "details": f"マウント先: {mount_point}, 内容: {os.listdir(mount_point)}",
             }
 
         # 4. /Applications にコピー
-        app_dest = "/Applications/TimeTracker.app"
+        app_dest = "/Applications/TimeReaper.app"
         if os.path.exists(app_dest):
             logger.info(f"既存アプリを削除: {app_dest}")
             shutil.rmtree(app_dest)
@@ -420,7 +420,7 @@ def perform_dmg_update(download_url: str) -> dict:
 
 def _get_installed_version(project_dir: str) -> str:
     """プロジェクトディレクトリから最新のバージョンを読み込む"""
-    init_path = os.path.join(project_dir, "timetracker", "__init__.py")
+    init_path = os.path.join(project_dir, "timereaper", "__init__.py")
     try:
         with open(init_path) as f:
             content = f.read()

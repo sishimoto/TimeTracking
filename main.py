@@ -1,5 +1,5 @@
 """
-TimeTracker メインエントリーポイント
+TimeReaper メインエントリーポイント
 コマンドラインから起動するためのCLIインターフェースを提供します。
 """
 
@@ -11,8 +11,8 @@ import os
 # パスの設定
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from timetracker.config import load_config, get_config, ensure_data_dir
-from timetracker.database import init_db
+from timereaper.config import load_config, get_config, ensure_data_dir
+from timereaper.database import init_db
 
 
 def setup_logging(verbose: bool = False):
@@ -27,9 +27,9 @@ def setup_logging(verbose: bool = False):
 
 def cmd_start(args):
     """メニューバーアプリを起動してトラッキング開始"""
-    from timetracker.menubar import run_menubar_app
+    from timereaper.menubar import run_menubar_app
 
-    print("⏱ TimeTracker を起動しています...")
+    print("⏱ TimeReaper を起動しています...")
     print("  メニューバーに常駐します")
     print(f"  ダッシュボード: http://127.0.0.1:{get_config()['dashboard']['port']}")
     print()
@@ -40,7 +40,7 @@ def cmd_start(args):
 
 def cmd_dashboard(args):
     """ダッシュボードのみ起動"""
-    from timetracker.dashboard import run_dashboard
+    from timereaper.dashboard import run_dashboard
 
     cfg = get_config()
     host = cfg["dashboard"]["host"]
@@ -52,9 +52,9 @@ def cmd_dashboard(args):
 def cmd_monitor(args):
     """CLIモードでモニタリング（メニューバーなし）"""
     import time
-    from timetracker.monitor import ActiveWindowMonitor
-    from timetracker.classifier import ActivityClassifier
-    from timetracker.database import insert_activity
+    from timereaper.monitor import ActiveWindowMonitor
+    from timereaper.classifier import ActivityClassifier
+    from timereaper.database import insert_activity
 
     cfg = get_config()
     interval = cfg.get("monitor", {}).get("interval_seconds", 5)
@@ -131,7 +131,7 @@ def cmd_sync_calendar(args):
     # Mac Calendar を優先
     mac_cal_config = cfg.get("mac_calendar", {})
     if mac_cal_config.get("enabled", False):
-        from timetracker.integrations.mac_calendar import MacCalendarSync
+        from timereaper.integrations.mac_calendar import MacCalendarSync
 
         sync = MacCalendarSync()
 
@@ -162,7 +162,7 @@ def cmd_sync_calendar(args):
     # Google Calendar フォールバック
     gc_config = cfg.get("google_calendar", {})
     if gc_config.get("enabled", False):
-        from timetracker.integrations.google_calendar import GoogleCalendarSync
+        from timereaper.integrations.google_calendar import GoogleCalendarSync
 
         sync = GoogleCalendarSync()
         print("📅 Google Calendar 同期中...")
@@ -180,10 +180,10 @@ def cmd_sync_calendar(args):
 def cmd_export(args):
     """データをCSVエクスポート"""
     import csv
-    from timetracker.database import get_activities
+    from timereaper.database import get_activities
 
     activities = get_activities(start=args.start, end=args.end, limit=100000)
-    output = args.output or f"timetracker_export_{args.start or 'all'}_{args.end or 'all'}.csv"
+    output = args.output or f"timereaper_export_{args.start or 'all'}_{args.end or 'all'}.csv"
 
     with open(output, "w", newline="", encoding="utf-8") as f:
         if activities:
@@ -196,7 +196,7 @@ def cmd_export(args):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="TimeTracker - macOS稼働時間管理アプリ",
+        description="TimeReaper - macOS稼働時間管理アプリ",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 使用例:

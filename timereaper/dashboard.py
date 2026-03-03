@@ -313,7 +313,7 @@ def create_app():
     @app.route("/api/version")
     def api_version():
         """現在のバージョン情報を返す"""
-        from timetracker import __version__
+        from timereaper import __version__
         return jsonify({"version": __version__})
 
     # --- 設定ページ ---

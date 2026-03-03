@@ -24,12 +24,12 @@ from .pomodoro import PomodoroTimer, PomodoroState, LongWorkAlert
 logger = logging.getLogger(__name__)
 
 
-class TimeTrackerApp(rumps.App):
-    """メニューバーに常駐するTimeTrackerアプリ"""
+class TimeReaperApp(rumps.App):
+    """メニューバーに常駐するTimeReaperアプリ"""
 
     def __init__(self):
         super().__init__(
-            "TimeTracker",
+            "TimeReaper",
             icon=None,
             title="⏱",
             quit_button=None,
@@ -328,7 +328,7 @@ class TimeTrackerApp(rumps.App):
             if info and info.is_update_available:
                 logger.info(f"新バージョン v{info.latest_version} が利用可能です")
                 rumps.notification(
-                    title="TimeTracker アップデート",
+                    title="TimeReaper アップデート",
                     subtitle=f"v{info.latest_version} が利用可能です",
                     message="ダッシュボードからアップデートできます。",
                 )
@@ -342,5 +342,5 @@ class TimeTrackerApp(rumps.App):
 
 def run_menubar_app():
     """メニューバーアプリを起動する"""
-    app = TimeTrackerApp()
+    app = TimeReaperApp()
     app.run()

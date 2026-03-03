@@ -1,4 +1,4 @@
-# TimeTracker リリース手順
+# TimeReaper リリース手順
 
 ## バージョニングルール
 
@@ -8,7 +8,7 @@
 - **MINOR**: 機能追加（後方互換あり）
 - **PATCH**: バグ修正
 
-バージョンは `timetracker/__init__.py` の `__version__` で一元管理。  
+バージョンは `timereaper/__init__.py` の `__version__` で一元管理。  
 `setup.py` は自動的にこの値を読み込むため、**変更は `__init__.py` のみ**で OK。
 
 ## リリース手順
@@ -16,9 +16,9 @@
 ### 1. バージョン更新
 
 ```bash
-# timetracker/__init__.py の __version__ を更新
+# timereaper/__init__.py の __version__ を更新
 # 例: "0.2.0" → "0.3.0"
-vi timetracker/__init__.py
+vi timereaper/__init__.py
 ```
 
 ### 2. 変更履歴の記録
@@ -54,7 +54,7 @@ python scripts/generate_icon.py
 ./scripts/build.sh --verify
 
 # 手動検証
-open dist/TimeTracker.app
+open dist/TimeReaper.app
 # → メニューバーに ⏱ が表示されることを確認
 # → http://127.0.0.1:5555 にアクセスしてダッシュボードを確認
 # → /summary ページの動作確認
@@ -90,11 +90,11 @@ git push origin main --tags
 
 **手動で作成する場合:**
 
-1. [GitHub Releases](https://github.com/sishimoto/TimeTracking/releases/new) にアクセス
+1. [GitHub Releases](https://github.com/sishimoto/TimeReaper/releases/new) にアクセス
 2. タグ: `v0.3.0` を選択
 3. タイトル: `v0.3.0: リリース名`
 4. 説明: CHANGELOG.md の該当セクションをコピー
-5. `dist/TimeTracker-v0.3.0.dmg` をアップロード
+5. `dist/TimeReaper-v0.3.0.dmg` をアップロード
 6. 「Publish release」
 
 ### テスト用プレリリースについて
@@ -109,8 +109,8 @@ git push origin main --tags
 ### 開発者（git clone）
 
 ```bash
-git clone https://github.com/sishimoto/TimeTracking.git
-cd TimeTracking
+git clone https://github.com/sishimoto/TimeReaper.git
+cd TimeReaper
 ./setup.sh
 ./start.sh
 ```
@@ -118,7 +118,7 @@ cd TimeTracking
 ### エンドユーザー（DMG）
 
 1. GitHub Releases から最新の `.dmg` をダウンロード
-2. DMG を開き、`TimeTracker.app` を `/Applications` にドラッグ
+2. DMG を開き、`TimeReaper.app` を `/Applications` にドラッグ
 3. 初回起動時:
    - 「開発元が未確認」と表示されたら、右クリック →「開く」を選択
    - アクセシビリティ権限を許可（システム設定で案内）
@@ -132,26 +132,26 @@ scripts/
 └── generate_icon.py   # アイコン生成スクリプト
 
 dist/
-├── TimeTracker.app/   # ビルド成果物
+├── TimeReaper.app/   # ビルド成果物
 │   ├── Contents/
 │   │   ├── Info.plist         # バージョン情報等
-│   │   ├── MacOS/TimeTracker  # 実行ファイル
+│   │   ├── MacOS/TimeReaper  # 実行ファイル
 │   │   └── Resources/
 │   │       ├── config.yaml
 │   │       ├── CalHelper.app/
-│   │       └── timetracker/templates/
+│   │       └── timereaper/templates/
 │   └── ...
-└── TimeTracker-vX.Y.Z.dmg    # 配布用 DMG
+└── TimeReaper-vX.Y.Z.dmg    # 配布用 DMG
 ```
 
 ## チェックリスト
 
 リリース前に確認:
 
-- [ ] `timetracker/__init__.py` のバージョンを更新した
+- [ ] `timereaper/__init__.py` のバージョンを更新した
 - [ ] `./scripts/build.sh --clean` でビルドが成功する
 - [ ] `./scripts/build.sh --verify` で全チェックが通過する
-- [ ] `open dist/TimeTracker.app` で正常に起動する
+- [ ] `open dist/TimeReaper.app` で正常に起動する
 - [ ] メニューバーに ⏱ が表示される
 - [ ] ダッシュボード（http://127.0.0.1:5555）が表示される
 - [ ] /summary ページが動作する

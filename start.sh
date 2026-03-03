@@ -1,5 +1,5 @@
 #!/bin/bash
-# TimeTracker 起動スクリプト
+# TimeReaper 起動スクリプト
 # ダブルクリックまたはターミナルから実行できます
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -14,6 +14,6 @@ sleep 1
 source venv/bin/activate
 python main.py start &
 
-echo "⏱ TimeTracker を起動しました"
+echo "⏱ TimeReaper を起動しました"
 echo "   ダッシュボード: http://127.0.0.1:5555"
 echo "   停止するには: pkill -f 'python main.py start'"

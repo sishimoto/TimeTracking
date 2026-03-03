@@ -1,4 +1,4 @@
-# TimeTracker - macOS稼働時間管理アプリ
+# TimeReaper - macOS稼働時間管理アプリ
 
 アクティブなウィンドウを自動監視し、どの時間にどのアプリでどの作業をしていたかを記録・可視化するmacOSアプリです。
 
@@ -41,7 +41,7 @@ timetracking/
 │   └── TODO.md                  # ロードマップ / 機能管理
 ├── CalHelper.swift              # Mac Calendar ヘルパー（Swift）
 ├── CalHelper.app/               # ビルド済みヘルパー（.app バンドル）
-└── timetracker/
+└── timereaper/
     ├── __init__.py
     ├── config.py                # 設定管理
     ├── monitor.py               # アクティブウィンドウ監視
@@ -183,7 +183,7 @@ macOS のカレンダーアプリに Google Calendar 等を同期させること
 1. [Google Cloud Console](https://console.cloud.google.com/) でプロジェクトを作成
 2. Calendar API を有効化
 3. OAuth 2.0 の認証情報を作成
-4. `credentials.json` を `~/.timetracker/` に配置
+4. `credentials.json` を `~/.timereaper/` に配置
 5. `config.yaml` で `google_calendar.enabled: true` に設定
 
 ```bash
@@ -204,7 +204,7 @@ slack:
 
 ## データ保存先
 
-- データベース: `~/.timetracker/timetracker.db` (SQLite)
+- データベース: `~/.timereaper/timereaper.db` (SQLite)
 - 設定ファイル: プロジェクトルートの `config.yaml`
 
 ## 今後の拡張アイデア

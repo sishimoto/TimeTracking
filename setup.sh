@@ -1,5 +1,5 @@
 #!/bin/bash
-# TimeTracker セットアップスクリプト
+# TimeReaper セットアップスクリプト
 # macOS用の稼働時間管理アプリのセットアップを行います
 #
 # 使い方:
@@ -28,7 +28,7 @@ log_step()  { echo -e "\n${GREEN}$1${NC}"; }
 get_version() {
     python3 -c "
 import re
-with open('timetracker/__init__.py') as f:
+with open('timereaper/__init__.py') as f:
     m = re.search(r\"__version__\s*=\s*['\\\"]([^'\\\"]+)\", f.read())
     print(m.group(1) if m else '0.0.0')
 " 2>/dev/null || echo "0.0.0"
@@ -36,7 +36,7 @@ with open('timetracker/__init__.py') as f:
 
 # ヘルプ
 show_help() {
-    echo "⏱  TimeTracker セットアップスクリプト"
+    echo "⏱  TimeReaper セットアップスクリプト"
     echo ""
     echo "使い方: $0 [オプション]"
     echo ""
@@ -56,8 +56,8 @@ fi
 # --install-agent オプション: LaunchAgent のインストールのみ実行
 if [ "$1" = "--install-agent" ]; then
     echo "🚀 LaunchAgent をインストール中..."
-    PLIST_SRC="$SCRIPT_DIR/com.timetracker.app.plist.template"
-    PLIST_DST="$HOME/Library/LaunchAgents/com.timetracker.app.plist"
+    PLIST_SRC="$SCRIPT_DIR/com.timereaper.app.plist.template"
+    PLIST_DST="$HOME/Library/LaunchAgents/com.timereaper.app.plist"
     VENV_PYTHON="$SCRIPT_DIR/venv/bin/python"
 
     if [ ! -f "$PLIST_SRC" ]; then
@@ -85,9 +85,9 @@ if [ "$1" = "--install-agent" ]; then
     log_info "LaunchAgent をインストールしました"
     echo "   macOS ログイン時に自動起動します"
     echo ""
-    echo "   停止: launchctl unload ~/Library/LaunchAgents/com.timetracker.app.plist"
-    echo "   再開: launchctl load ~/Library/LaunchAgents/com.timetracker.app.plist"
-    echo "   削除: launchctl unload ~/Library/LaunchAgents/com.timetracker.app.plist && rm ~/Library/LaunchAgents/com.timetracker.app.plist"
+    echo "   停止: launchctl unload ~/Library/LaunchAgents/com.timereaper.app.plist"
+    echo "   再開: launchctl load ~/Library/LaunchAgents/com.timereaper.app.plist"
+    echo "   削除: launchctl unload ~/Library/LaunchAgents/com.timereaper.app.plist && rm ~/Library/LaunchAgents/com.timereaper.app.plist"
     exit 0
 fi
 
@@ -103,11 +103,11 @@ if [ "$1" = "--update" ]; then
     pip install -r requirements.txt --upgrade
     log_info "依存パッケージを更新しました"
     VERSION=$(get_version)
-    echo "   TimeTracker v${VERSION}"
+    echo "   TimeReaper v${VERSION}"
     exit 0
 fi
 
-echo "⏱ TimeTracker セットアップ"
+echo "⏱ TimeReaper セットアップ"
 echo "=========================="
 echo ""
 
@@ -169,7 +169,7 @@ pip install -r requirements.txt -q
 log_info "依存パッケージをインストールしました"
 
 # データディレクトリの作成
-DATA_DIR="$HOME/.timetracker"
+DATA_DIR="$HOME/.timereaper"
 mkdir -p "$DATA_DIR"
 log_info "データディレクトリ: $DATA_DIR"
 
@@ -177,7 +177,7 @@ log_info "データディレクトリ: $DATA_DIR"
 echo ""
 echo "⚠️  重要: macOSのアクセシビリティ権限が必要です"
 echo ""
-echo "   TimeTrackerがウィンドウ情報を取得するには、以下の設定が必要です:"
+echo "   TimeReaperがウィンドウ情報を取得するには、以下の設定が必要です:"
 echo ""
 echo "   1. システム設定 → プライバシーとセキュリティ → アクセシビリティ"
 echo "   2. 「Terminal」または「iTerm2」（使用中のターミナル）を有効にする"
@@ -195,7 +195,7 @@ if [ -f "CalHelper.swift" ]; then
 <plist version="1.0">
 <dict>
     <key>CFBundleIdentifier</key>
-    <string>com.timetracker.calhelper</string>
+    <string>com.timereaper.calhelper</string>
     <key>CFBundleName</key>
     <string>CalHelper</string>
     <key>CFBundleExecutable</key>
@@ -205,7 +205,7 @@ if [ -f "CalHelper.swift" ]; then
     <key>LSBackgroundOnly</key>
     <true/>
     <key>NSCalendarsFullAccessUsageDescription</key>
-    <string>TimeTracker needs calendar access to show your schedule.</string>
+    <string>TimeReaper needs calendar access to show your schedule.</string>
 </dict>
 </plist>
 PLIST
@@ -225,8 +225,8 @@ log_step "🗃  データベースを初期化中..."
 $PYTHON_CMD -c "
 import sys
 sys.path.insert(0, '.')
-from timetracker.config import load_config, ensure_data_dir
-from timetracker.database import init_db
+from timereaper.config import load_config, ensure_data_dir
+from timereaper.database import init_db
 load_config()
 ensure_data_dir()
 init_db()

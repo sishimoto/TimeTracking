@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.timetracker.app</string>
+    <string>com.timereaper.app</string>
     <key>ProgramArguments</key>
     <array>
         <string>__VENV_PYTHON__</string>
@@ -17,8 +17,8 @@
     <key>KeepAlive</key>
     <false/>
     <key>StandardOutPath</key>
-    <string>__HOME__/.timetracker/timetracker.log</string>
+    <string>__HOME__/.timereaper/timereaper.log</string>
     <key>StandardErrorPath</key>
-    <string>__HOME__/.timetracker/timetracker.err</string>
+    <string>__HOME__/.timereaper/timereaper.err</string>
 </dict>
 </plist>

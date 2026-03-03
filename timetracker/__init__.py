@@ -1,8 +1,0 @@
-"""
-TimeTracker - macOS稼働時間管理アプリ
-アクティブウィンドウを監視し、作業時間を自動的に記録・分類します。
-"""
-
-__version__ = "0.4.0"
-__app_name__ = "TimeTracker"
-__bundle_id__ = "com.timetracker.app"

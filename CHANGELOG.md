@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/lang/ja/).
 
+## [0.5.0] - 2026-03-03
+
+### Changed
+- アプリ名を TimeTracker → **TimeReaper** に変更
+  - Python パッケージ: `timetracker/` → `timereaper/`
+  - データディレクトリ: `~/.timetracker/` → `~/.timereaper/`（自動移行あり）
+  - バンドルID: `com.timetracker.app` → `com.timereaper.app`
+  - GitHub リポジトリ名: `TimeTracking` → `TimeReaper`
+  - .app バンドル: `TimeTracker.app` → `TimeReaper.app`
+  - DMG: `TimeTracker-v*.dmg` → `TimeReaper-v*.dmg`
+  - DB ファイル: `timetracker.db` → `timereaper.db`（移行時自動リネーム）
+
 ## [0.4.0] - 2026-03-03
 
 ### Added
@@ -20,7 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/lang/ja/).
 - 設定ページ (/settings)
   - ポモドーロ・長時間アラート・アイドル復帰サマリーの有効/無効切り替え
   - 各パラメータのカスタマイズ (Web UI)
-  - ユーザー設定は ~/.timetracker/user_settings.json に保存
+  - ユーザー設定は ~/.timereaper/user_settings.json に保存
   - 設定変更がメニューバーアプリに即座に反映
 - REST API: /api/settings, /api/pomodoro/status, /api/pomodoro/<action>
 - 全ページに⚙設定リンク追加
