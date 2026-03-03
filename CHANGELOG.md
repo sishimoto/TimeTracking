@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/lang/ja/).
 
+## [0.3.0] - 2026-03-03
+
+### Added
+- アップデート通知: GitHub Releases/Tags API によるバージョンチェック
+- アップデート自動適用: git pull ベースの更新 + ダッシュボードバナー UI
+- メニューバーアプリ: 更新通知表示
+- 分類精度向上: URLAnalyzer を classify() に統合
+  - Google Meet/Zoom → meeting, Slack → communication 等 URL サービス判定
+  - GitHub URL からリポジトリ名を抽出しプロジェクト推定を強化
+- LLM 分類: OpenAI API によるバッチ自動分類 (llm_classifier.py)
+  - /api/llm-classify, /api/llm-status エンドポイント
+  - サマリーページに AI 分類ボタン
+- 週次レポートページ (/weekly)
+  - 7日間日別サマリーグリッド
+  - 日別スタック棒グラフ (Chart.js)
+  - 作業工程ドーナツチャート + プロジェクト別横棒グラフ
+  - 前週/翌週ナビゲーション
+- サマリーページ: フィルタ機能 (作業工程・プロジェクト・アプリ)
+- ページ間ナビゲーション改善 (全ページ相互リンク)
+
+### Changed
+- setup.sh: macOS/Python バージョンチェック、--update/--help オプション追加
+- バージョンを 0.2.0 → 0.3.0 に更新
+
 ## [0.2.0] - 2026-03-03
 
 ### Added

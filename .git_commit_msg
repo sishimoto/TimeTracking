@@ -1,0 +1,5 @@
+#5 bump version to 0.3.0, update CHANGELOG and TODO
+
+- Version: 0.2.0 -> 0.3.0
+- CHANGELOG.md: add v0.3.0 section with Phase 2-4 changes
+- TODO.md: mark completed items, clean up short-term roadmap
