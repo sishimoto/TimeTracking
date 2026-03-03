@@ -240,6 +240,10 @@ def main():
 
     args = parser.parse_args()
 
+    # .app バンドルからの起動等、サブコマンド未指定時はデフォルトで start
+    if args.command is None:
+        args.command = "start"
+
     setup_logging(args.verbose)
     load_config(args.config)
     ensure_data_dir()
