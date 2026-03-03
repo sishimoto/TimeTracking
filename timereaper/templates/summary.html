@@ -187,6 +187,23 @@
             color: var(--text-primary);
         }
 
+        .toolbar select.filter-active {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 1px var(--accent-blue);
+        }
+
+        .filter-badge {
+            font-size: 11px;
+            background: rgba(88, 166, 255, 0.15);
+            color: var(--accent-blue);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: 600;
+            display: none;
+        }
+
+        .filter-badge.active { display: inline; }
+
         /* Block Table */
         .block-table {
             width: 100%;
@@ -225,6 +242,15 @@
         .block-table tr.selected td {
             background: rgba(88, 166, 255, 0.12);
             border-color: var(--accent-blue);
+        }
+
+        .block-table tr.drag-over td {
+            background: rgba(88, 166, 255, 0.08);
+        }
+
+        .block-table.dragging {
+            user-select: none;
+            -webkit-user-select: none;
         }
 
         .block-time {
@@ -588,6 +614,7 @@
             <select id="filterApp" onchange="applyFilters()">
                 <option value="">全アプリ</option>
             </select>
+            <span class="filter-badge" id="filterBadge"></span>
             <button class="secondary" onclick="clearFilters()">クリア</button>
             <span style="flex:1"></span>
             <label>選択: </label>
@@ -674,11 +701,19 @@
         let lastSelectedIdx = null;
         let tagOptions = null;
 
+        // Drag selection state
+        let isDragging = false;
+        let dragStartIdx = null;
+        let dragCurrentIdx = null;
+        let dragMode = null; // 'select' or 'deselect'
+        let dragMoved = false; // ドラッグ中に実際に移動したか
+
         // --- Init ---
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('datePicker').value = currentDate;
             loadBlocks();
             loadTagOptions();
+            initDragSelection();
         });
 
         // --- Navigation ---
@@ -793,6 +828,7 @@
             const pjSel = document.getElementById('bulkProject');
 
             wpSel.innerHTML = '<option value="">(変更しない)</option>' +
+                '<option value="__clear__">(クリア)</option>' +
                 tagOptions.task_categories.map(c =>
                     `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`
                 ).join('');
@@ -811,9 +847,13 @@
             const phases = new Set();
             const projects = new Set();
             const apps = new Set();
+            let hasUntaggedPhase = false;
+            let hasUntaggedProject = false;
             blocks.forEach(b => {
                 if (b.work_phase) phases.add(b.work_phase);
+                else hasUntaggedPhase = true;
                 if (b.project) projects.add(b.project);
+                else hasUntaggedProject = true;
                 (b.top_apps || []).forEach(a => { if (a.app) apps.add(a.app); });
             });
 
@@ -826,8 +866,10 @@
             const curApp = fApp.value;
 
             fPhase.innerHTML = '<option value="">全作業工程</option>' +
+                (hasUntaggedPhase ? '<option value="__untagged__">🏷️ 未設定</option>' : '') +
                 [...phases].sort().map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
             fProject.innerHTML = '<option value="">全プロジェクト</option>' +
+                (hasUntaggedProject ? '<option value="__untagged__">🏷️ 未設定</option>' : '') +
                 [...projects].sort().map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
             fApp.innerHTML = '<option value="">全アプリ</option>' +
                 [...apps].sort().map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
@@ -849,8 +891,16 @@
                 filteredIndices = [];
                 blocks.forEach((b, idx) => {
                     let match = true;
-                    if (fPhase && b.work_phase !== fPhase) match = false;
-                    if (fProject && b.project !== fProject) match = false;
+                    if (fPhase === '__untagged__') {
+                        if (b.work_phase) match = false;
+                    } else if (fPhase && b.work_phase !== fPhase) {
+                        match = false;
+                    }
+                    if (fProject === '__untagged__') {
+                        if (b.project) match = false;
+                    } else if (fProject && b.project !== fProject) {
+                        match = false;
+                    }
                     if (fApp) {
                         const hasApp = (b.top_apps || []).some(a => a.app === fApp);
                         if (!hasApp) match = false;
@@ -858,8 +908,34 @@
                     if (match) filteredIndices.push(idx);
                 });
             }
+
+            // フィルタ状態の視覚フィードバック
+            updateFilterVisuals(fPhase, fProject, fApp);
+
+            // フィルタ変更時に選択をクリア（非表示ブロックの選択残りを防ぐ）
+            selected.clear();
+            updateBulkBar();
             renderBlocks();
             updateStats();
+        }
+
+        function updateFilterVisuals(fPhase, fProject, fApp) {
+            const phaseEl = document.getElementById('filterPhase');
+            const projectEl = document.getElementById('filterProject');
+            const appEl = document.getElementById('filterApp');
+            const badge = document.getElementById('filterBadge');
+
+            phaseEl.classList.toggle('filter-active', !!fPhase);
+            projectEl.classList.toggle('filter-active', !!fProject);
+            appEl.classList.toggle('filter-active', !!fApp);
+
+            const activeCount = [fPhase, fProject, fApp].filter(Boolean).length;
+            if (activeCount > 0 && filteredIndices !== null) {
+                badge.textContent = `${filteredIndices.length} / ${blocks.length} 件`;
+                badge.classList.add('active');
+            } else {
+                badge.classList.remove('active');
+            }
         }
 
         function clearFilters() {
@@ -867,6 +943,7 @@
             document.getElementById('filterProject').value = '';
             document.getElementById('filterApp').value = '';
             filteredIndices = null;
+            updateFilterVisuals('', '', '');
             renderBlocks();
             updateStats();
         }
@@ -885,6 +962,11 @@
 
         // --- Selection ---
         function onRowClick(event, idx) {
+            // ドラッグ後のクリックは無視
+            if (dragMoved) {
+                dragMoved = false;
+                return;
+            }
             // 行クリックでトグル（Shift対応）
             const willSelect = !selected.has(idx);
             handleSelect(idx, willSelect, event.shiftKey);
@@ -897,13 +979,23 @@
         }
 
         function handleSelect(idx, checked, isShift) {
+            const visible = getVisibleIndices();
             if (isShift && lastSelectedIdx !== null) {
-                // Shift+クリック: lastSelectedIdx から idx まで範囲選択/解除
-                const from = Math.min(lastSelectedIdx, idx);
-                const to = Math.max(lastSelectedIdx, idx);
-                for (let i = from; i <= to; i++) {
-                    if (checked) selected.add(i);
-                    else selected.delete(i);
+                // Shift+クリック: 表示中のブロック内で範囲選択/解除
+                const visiblePos = (i) => visible.indexOf(i);
+                const fromPos = visiblePos(lastSelectedIdx);
+                const toPos = visiblePos(idx);
+                if (fromPos !== -1 && toPos !== -1) {
+                    const startPos = Math.min(fromPos, toPos);
+                    const endPos = Math.max(fromPos, toPos);
+                    for (let p = startPos; p <= endPos; p++) {
+                        if (checked) selected.add(visible[p]);
+                        else selected.delete(visible[p]);
+                    }
+                } else {
+                    // fallback: lastSelectedIdx が非表示の場合は単一選択
+                    if (checked) selected.add(idx);
+                    else selected.delete(idx);
                 }
             } else {
                 if (checked) selected.add(idx);
@@ -918,11 +1010,16 @@
             handleSelect(idx, checked, false);
         }
 
+        function getVisibleIndices() {
+            return filteredIndices !== null ? filteredIndices : blocks.map((_, i) => i);
+        }
+
         function toggleAll(checked) {
+            const visible = getVisibleIndices();
             if (checked) {
-                blocks.forEach((_, i) => selected.add(i));
+                visible.forEach(i => selected.add(i));
             } else {
-                selected.clear();
+                visible.forEach(i => selected.delete(i));
             }
             updateBulkBar();
             renderBlocks();
@@ -935,12 +1032,16 @@
 
         function deselectAll() {
             document.getElementById('checkAll').checked = false;
-            toggleAll(false);
+            selected.clear();
+            updateBulkBar();
+            renderBlocks();
         }
 
         function selectUntagged() {
             selected.clear();
-            blocks.forEach((b, i) => {
+            const visible = getVisibleIndices();
+            visible.forEach(i => {
+                const b = blocks[i];
                 if (!b.work_phase && !b.project) selected.add(i);
             });
             updateBulkBar();
@@ -978,7 +1079,8 @@
                     start_time: b.block_start,
                     end_time: b.block_end,
                 };
-                if (wp) body.work_phase = wp;
+                if (wp === '__clear__') body.work_phase = '';
+                else if (wp) body.work_phase = wp;
                 if (pj === '__clear__') body.project = '';
                 else if (pj) body.project = pj;
 
@@ -1062,6 +1164,108 @@
             toast.textContent = msg;
             toast.classList.add('show');
             setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // --- Drag Selection ---
+        function initDragSelection() {
+            const tbody = document.getElementById('blockBody');
+            const table = document.querySelector('.block-table');
+
+            tbody.addEventListener('mousedown', (e) => {
+                // チェックボックスやリンクのクリックは無視
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'A') return;
+                // 左クリックのみ
+                if (e.button !== 0) return;
+
+                const row = e.target.closest('tr[data-idx]');
+                if (!row) return;
+
+                const idx = parseInt(row.dataset.idx);
+                isDragging = true;
+                dragStartIdx = idx;
+                dragCurrentIdx = idx;
+                dragMoved = false;
+                // 開始行が既に選択されていたら解除モード、そうでなければ選択モード
+                dragMode = selected.has(idx) ? 'deselect' : 'select';
+
+                table.classList.add('dragging');
+                e.preventDefault(); // テキスト選択を防止
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+
+                const row = e.target.closest('tr[data-idx]');
+                if (!row) return;
+
+                const idx = parseInt(row.dataset.idx);
+                if (idx === dragCurrentIdx) return;
+                dragCurrentIdx = idx;
+                dragMoved = true;
+
+                // ドラッグ範囲のプレビュー表示
+                updateDragPreview();
+            });
+
+            document.addEventListener('mouseup', (e) => {
+                if (!isDragging) return;
+                isDragging = false;
+
+                const table = document.querySelector('.block-table');
+                table.classList.remove('dragging');
+
+                // 実際にドラッグした場合のみ範囲選択を適用
+                if (dragMoved) {
+                    applyDragSelection();
+                }
+
+                dragStartIdx = null;
+                dragCurrentIdx = null;
+                dragMode = null;
+            });
+        }
+
+        function updateDragPreview() {
+            if (dragStartIdx === null || dragCurrentIdx === null) return;
+            const visible = getVisibleIndices();
+            const startPos = visible.indexOf(dragStartIdx);
+            const endPos = visible.indexOf(dragCurrentIdx);
+            if (startPos === -1 || endPos === -1) return;
+
+            const from = Math.min(startPos, endPos);
+            const to = Math.max(startPos, endPos);
+            const dragRange = new Set(visible.slice(from, to + 1));
+
+            // drag-over クラスを更新
+            document.querySelectorAll('.block-table tr[data-idx]').forEach(row => {
+                const idx = parseInt(row.dataset.idx);
+                row.classList.toggle('drag-over', dragRange.has(idx) && !selected.has(idx));
+            });
+        }
+
+        function applyDragSelection() {
+            if (dragStartIdx === null || dragCurrentIdx === null) return;
+            const visible = getVisibleIndices();
+            const startPos = visible.indexOf(dragStartIdx);
+            const endPos = visible.indexOf(dragCurrentIdx);
+            if (startPos === -1 || endPos === -1) return;
+
+            const from = Math.min(startPos, endPos);
+            const to = Math.max(startPos, endPos);
+
+            for (let p = from; p <= to; p++) {
+                const idx = visible[p];
+                if (dragMode === 'select') selected.add(idx);
+                else selected.delete(idx);
+            }
+
+            // drag-over クラスをクリア
+            document.querySelectorAll('.block-table tr.drag-over').forEach(row => {
+                row.classList.remove('drag-over');
+            });
+
+            updateBulkBar();
+            renderBlocks();
         }
 
         // --- LLM 分類 ---
