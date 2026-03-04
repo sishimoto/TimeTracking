@@ -97,11 +97,17 @@ def cmd_monitor(args):
                     current_meeting = get_current_meeting()
                     meeting_title = current_meeting.get("title", "") if current_meeting else ""
 
+                    # カレンダーイベントの種類を判定
+                    cal_type = classifier.classify_calendar_event(meeting_title) if current_meeting else None
+
                     classification = classifier.classify(info, meeting_title=meeting_title)
 
-                    # 会議中かつ meeting イベントなら work_phase を meeting に上書き
-                    if current_meeting and classifier.is_meeting_event(meeting_title):
+                    # カレンダーイベント種別に応じた上書き
+                    if cal_type == "meeting":
                         classification["work_phase"] = "meeting"
+                    elif cal_type == "other":
+                        classification["project"] = "その他"
+                        classification["work_phase"] = "other"
 
                     # アクティブ時のみ記録
                     insert_activity(

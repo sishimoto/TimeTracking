@@ -169,12 +169,18 @@ class TimeReaperApp(rumps.App):
                         current_meeting = get_current_meeting()
                         meeting_title = current_meeting.get("title", "") if current_meeting else ""
 
+                        # カレンダーイベントの種類を判定
+                        cal_type = self.classifier.classify_calendar_event(meeting_title) if current_meeting else None
+
                         # アクティビティを分類（会議タイトルも渡す）
                         classification = self.classifier.classify(window_info, meeting_title=meeting_title)
 
-                        # 会議中かつ meeting イベントなら work_phase を meeting に上書き
-                        if current_meeting and self.classifier.is_meeting_event(meeting_title):
+                        # カレンダーイベント種別に応じた上書き
+                        if cal_type == "meeting":
                             classification["work_phase"] = "meeting"
+                        elif cal_type == "other":
+                            classification["project"] = "その他"
+                            classification["work_phase"] = "other"
 
                         # データベースに保存（アクティブ時のみ）
                         insert_activity(

@@ -106,21 +106,24 @@ classification_rules:
     - random
     - times-
     project: 全社活動
-  # カレンダーイベントのうち meeting 扱いしないもの（除外パターン）
-  calendar_non_meeting_patterns:
+  # カレンダーイベントのうち meeting 扱いしないもの
+  # work: 開発・作業ブロック → ウィンドウベースの分類を優先
+  calendar_work_patterns:
+  - 開発$
+  - ^work$
+  # other: 非作業イベント → project="その他"
+  calendar_other_patterns:
   - お昼
   - 昼食
   - ランチ
   - 不在
   - 移動
   - 出社
-  - 開発$
   - 私用
   - 帰宅
   - Block
   - 子供
   - family
-  - ^work$
   - 在宅
   - 健康診断
   - 休暇

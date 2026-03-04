@@ -114,10 +114,14 @@ class ActivityClassifier:
                 "work_phase": rule.get("work_phase", ""),
             })
 
-        # 非 meeting 除外パターン
-        self._non_meeting_patterns: list[re.Pattern] = [
+        # カレンダーイベント分類パターン
+        self._calendar_work_patterns: list[re.Pattern] = [
             re.compile(kw, re.IGNORECASE)
-            for kw in rules.get("calendar_non_meeting_patterns", [])
+            for kw in rules.get("calendar_work_patterns", [])
+        ]
+        self._calendar_other_patterns: list[re.Pattern] = [
+            re.compile(kw, re.IGNORECASE)
+            for kw in rules.get("calendar_other_patterns", [])
         ]
 
         # デフォルトプロジェクトタイプ
@@ -307,19 +311,25 @@ class ActivityClassifier:
         _, cost = self._detect_project_type(channel)
         return cost
 
-    def is_meeting_event(self, title: str) -> bool:
-        """カレンダーイベントが meeting として扱うべきか判定する
+    def classify_calendar_event(self, title: str) -> str:
+        """カレンダーイベントの種類を判定する
 
-        config.yaml の calendar_non_meeting_patterns に
-        マッチしたイベントは meeting 扱いしない（除外）。
+        Returns:
+            "meeting" - 会議イベント（work_phase を meeting に上書き）
+            "work"    - 作業ブロック（ウィンドウベースの分類を優先）
+            "other"   - 非作業イベント（project="その他"）
         """
         if not title:
-            return False
-        for pattern in self._non_meeting_patterns:
+            return "meeting"
+        for pattern in self._calendar_work_patterns:
             if pattern.search(title):
-                logger.debug(f"非meetingイベント除外: {title!r}")
-                return False
-        return True
+                logger.debug(f"カレンダー work イベント: {title!r}")
+                return "work"
+        for pattern in self._calendar_other_patterns:
+            if pattern.search(title):
+                logger.debug(f"カレンダー other イベント: {title!r}")
+                return "other"
+        return "meeting"
 
     def _match_calendar_project(self, meeting_title: str) -> str:
         """カレンダーイベントタイトルからプロジェクトを推定する
