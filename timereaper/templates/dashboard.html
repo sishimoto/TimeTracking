@@ -122,49 +122,56 @@
             font-size: 13px;
         }
 
-        /* Update Banner */
-        .update-banner {
-            display: none;
-            background: linear-gradient(135deg, #1a3a2a, #162d22);
-            border: 1px solid var(--accent-green);
-            border-radius: 8px;
-            padding: 12px 20px;
-            margin-bottom: 16px;
-            align-items: center;
-            gap: 12px;
-            font-size: 14px;
+        /* Update indicator (inline compact) */
+        .version-badge {
+            font-size: 11px; font-weight: 400;
+            background: var(--bg-secondary); border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 2px 8px; border-radius: 10px;
+            vertical-align: middle; margin-left: 4px;
+            cursor: pointer; transition: all 0.2s;
+            user-select: none;
         }
-        .update-banner.visible { display: flex; }
-        .update-banner .update-icon { font-size: 20px; }
-        .update-banner .update-text { flex: 1; }
-        .update-banner .update-text strong { color: var(--accent-green); }
-        .update-banner .update-actions { display: flex; gap: 8px; }
-        .update-banner .update-btn {
-            padding: 6px 14px;
-            border-radius: 6px;
-            border: none;
-            cursor: pointer;
+        .version-badge:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
+        .version-badge.checking { opacity: 0.5; pointer-events: none; }
+        .update-toast {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 14px;
+            margin-bottom: 12px;
             font-size: 13px;
+            animation: slideDown 0.3s ease;
+        }
+        .update-toast.visible { display: flex; }
+        .update-toast .update-text { flex: 1; color: var(--text-secondary); }
+        .update-toast .update-text strong { color: var(--accent-green); }
+        .update-toast .update-btn {
+            padding: 4px 12px; border-radius: 5px;
+            border: none; cursor: pointer; font-size: 12px;
             transition: opacity 0.2s;
         }
-        .update-banner .update-btn:hover { opacity: 0.85; }
+        .update-toast .update-btn:hover { opacity: 0.85; }
         .update-btn-primary {
-            background: var(--accent-green);
-            color: #0d1117;
-            font-weight: 600;
+            background: var(--accent-green); color: #0d1117; font-weight: 600;
         }
         .update-btn-secondary {
-            background: transparent;
-            border: 1px solid var(--border) !important;
-            color: var(--text-secondary);
+            background: transparent; border: 1px solid var(--border) !important;
+            color: var(--text-secondary); font-size: 12px; text-decoration: none;
         }
         .update-btn-close {
-            background: transparent;
-            border: none;
-            color: var(--text-secondary);
-            cursor: pointer;
-            font-size: 18px;
-            padding: 0 4px;
+            background: transparent; border: none; color: var(--text-secondary);
+            cursor: pointer; font-size: 16px; padding: 0 2px; line-height: 1;
+        }
+        .update-toast.latest {
+            border-color: var(--accent-blue);
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         /* Stats Cards */
@@ -497,8 +504,7 @@
 
             .modal { min-width: auto; max-width: 90vw; padding: 16px; }
 
-            .update-banner { flex-direction: column; gap: 8px; align-items: flex-start; }
-            .update-actions { width: 100%; justify-content: flex-start; }
+            .update-toast { flex-wrap: wrap; }
         }
 
         /* Hourly heatmap */
@@ -649,7 +655,7 @@
         <header>
             <div class="header-top">
                 <div class="header-left">
-                    <h1><img src="/static/icon-128.png" alt="" class="app-icon">TimeReaper <span id="versionBadge" style="font-size: 11px; font-weight: 400; background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-secondary); padding: 2px 8px; border-radius: 10px; vertical-align: middle; margin-left: 4px;"></span></h1>
+                    <h1><img src="/static/icon-128.png" alt="" class="app-icon">TimeReaper <span id="versionBadge" class="version-badge" onclick="manualCheckForUpdates()" title="クリックでアップデートを確認"></span></h1>
                     <div class="status-bar" style="margin-left: 8px;">
                         <div class="status-dot" id="statusDot"></div>
                         <span id="statusText">監視中</span>
@@ -669,19 +675,8 @@
             </div>
         </header>
 
-        <!-- Update Banner -->
-        <div class="update-banner" id="updateBanner">
-            <span class="update-icon">🚀</span>
-            <div class="update-text">
-                新バージョン <strong id="updateVersion"></strong> が利用可能です
-                <span id="updateNotes" style="color: var(--text-secondary); margin-left: 8px;"></span>
-            </div>
-            <div class="update-actions">
-                <button class="update-btn update-btn-primary" onclick="performUpdate()">アップデート</button>
-                <a href="#" id="updateReleaseLink" target="_blank" class="update-btn update-btn-secondary" style="text-decoration:none;">詳細</a>
-                <button class="update-btn-close" onclick="dismissUpdate()">&times;</button>
-            </div>
-        </div>
+        <!-- Update Toast (compact) -->
+        <div class="update-toast" id="updateToast"></div>
 
         <!-- Stats Cards -->
         <div class="stats-row">
@@ -1369,37 +1364,65 @@
 
         // --- アップデートチェック ---
         let _updateDownloadUrl = '';
+        let _currentVersion = '';
 
-        async function checkForUpdates() {
-            try {
-                const res = await fetch('/api/check-update');
-                if (!res.ok) return;
-                const data = await res.json();
-                if (data.is_update_available) {
-                    _updateDownloadUrl = data.download_url || '';
-                    document.getElementById('updateVersion').textContent = 'v' + data.latest_version;
-                    document.getElementById('updateReleaseLink').href = data.release_url || '#';
-                    const notesEl = document.getElementById('updateNotes');
-                    if (data.release_notes) {
-                        const firstLine = data.release_notes.split('\n')[0].substring(0, 80);
-                        notesEl.textContent = '— ' + firstLine;
-                    }
-                    document.getElementById('updateBanner').classList.add('visible');
-                }
-            } catch (e) {
-                // ネットワークエラーは無視（オフライン時など）
-            }
+        function showUpdateToast(html, cls) {
+            const el = document.getElementById('updateToast');
+            el.innerHTML = html;
+            el.className = 'update-toast visible' + (cls ? ' ' + cls : '');
         }
 
         function dismissUpdate() {
-            document.getElementById('updateBanner').classList.remove('visible');
+            const el = document.getElementById('updateToast');
+            el.classList.remove('visible');
             sessionStorage.setItem('updateDismissed', '1');
         }
 
+        async function checkForUpdates(manual) {
+            const badge = document.getElementById('versionBadge');
+            if (manual) badge.classList.add('checking');
+            try {
+                const res = await fetch('/api/check-update');
+                if (!res.ok) {
+                    if (manual) showUpdateToast('⚠️ <span class="update-text">確認に失敗しました</span><button class="update-btn-close" onclick="dismissUpdate()">&times;</button>');
+                    return;
+                }
+                const data = await res.json();
+                if (data.is_update_available) {
+                    _updateDownloadUrl = data.download_url || '';
+                    const releaseUrl = data.release_url || '#';
+                    showUpdateToast(
+                        '<span class="update-text">🆙 <strong>v' + data.latest_version + '</strong> が利用可能</span>' +
+                        '<button class="update-btn update-btn-primary" onclick="performUpdate()">更新</button>' +
+                        '<a href="' + releaseUrl + '" target="_blank" class="update-btn update-btn-secondary">詳細</a>' +
+                        '<button class="update-btn-close" onclick="dismissUpdate()">&times;</button>'
+                    );
+                    // バージョンバッジにドット表示
+                    badge.style.borderColor = 'var(--accent-green)';
+                    badge.style.color = 'var(--accent-green)';
+                } else if (manual) {
+                    showUpdateToast(
+                        '<span class="update-text">✅ 最新バージョンです（v' + _currentVersion + '）</span>' +
+                        '<button class="update-btn-close" onclick="dismissUpdate()">&times;</button>',
+                        'latest'
+                    );
+                    setTimeout(dismissUpdate, 4000);
+                }
+            } catch (e) {
+                if (manual) showUpdateToast('⚠️ <span class="update-text">ネットワークエラー</span><button class="update-btn-close" onclick="dismissUpdate()">&times;</button>');
+            } finally {
+                badge.classList.remove('checking');
+            }
+        }
+
+        function manualCheckForUpdates() {
+            sessionStorage.removeItem('updateDismissed');
+            checkForUpdates(true);
+        }
+
         async function performUpdate() {
-            const btn = event.target;
-            btn.textContent = '更新中...';
-            btn.disabled = true;
+            const toast = document.getElementById('updateToast');
+            toast.innerHTML = '<span class="update-text">⏳ ダウンロード中...</span>';
             try {
                 const res = await fetch('/api/update', {
                     method: 'POST',
@@ -1408,35 +1431,31 @@
                 });
                 const data = await res.json();
                 if (data.success) {
-                    const restartMsg = data.restart
-                        ? ' — アプリを自動的に再起動します...'
-                        : ' — アプリを再起動してください';
-                    document.getElementById('updateBanner').innerHTML =
-                        '<span class="update-icon">✅</span>' +
-                        '<div class="update-text"><strong>' + data.message + '</strong>' +
-                        restartMsg + '</div>' +
-                        '<button class="update-btn-close" onclick="dismissUpdate()">&times;</button>';
+                    const restartMsg = data.restart ? '再起動します...' : '再起動してください';
+                    showUpdateToast('<span class="update-text">✅ <strong>' + data.message + '</strong> — ' + restartMsg + '</span>');
                 } else {
-                    btn.textContent = '失敗';
-                    btn.style.background = 'var(--accent-red)';
-                    alert('アップデート失敗: ' + data.message + '\n\n' + (data.details || ''));
-                    setTimeout(() => { btn.textContent = 'アップデート'; btn.disabled = false; btn.style.background = ''; }, 3000);
+                    showUpdateToast(
+                        '<span class="update-text">❌ ' + data.message + '</span>' +
+                        '<button class="update-btn-close" onclick="dismissUpdate()">&times;</button>'
+                    );
                 }
             } catch (e) {
-                btn.textContent = 'エラー';
-                alert('アップデートに失敗しました: ' + e.message);
-                setTimeout(() => { btn.textContent = 'アップデート'; btn.disabled = false; }, 3000);
+                showUpdateToast(
+                    '<span class="update-text">❌ 通信エラー: ' + e.message + '</span>' +
+                    '<button class="update-btn-close" onclick="dismissUpdate()">&times;</button>'
+                );
             }
         }
 
         // バージョン表示
         fetch('/api/version').then(r => r.json()).then(d => {
+            _currentVersion = d.version;
             document.getElementById('versionBadge').textContent = 'v' + d.version;
         }).catch(() => {});
 
         // ページ読み込み後にアップデートチェック（セッション中一度だけ）
         if (!sessionStorage.getItem('updateDismissed')) {
-            setTimeout(checkForUpdates, 3000);  // 3秒後に非同期チェック
+            setTimeout(() => checkForUpdates(false), 3000);
         }
     </script>
 </body>
