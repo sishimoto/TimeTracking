@@ -292,17 +292,32 @@ def create_app():
         is_app_bundle = app_path.endswith(".app/Contents/Resources") or \
                         ".app/" in app_path
 
-        if is_app_bundle and download_url:
-            # .app バンドル → DMG ダウンロード＆置き換え
-            result = perform_dmg_update(download_url)
-            if result.get("restart"):
-                # 成功時: アプリ終了をスケジュール
-                import threading
-                def _quit_later():
-                    import time
-                    time.sleep(1)
-                    os._exit(0)
-                threading.Thread(target=_quit_later, daemon=True).start()
+        if is_app_bundle:
+            # .app バンドル → DMG ダウンロードで更新
+            if not download_url:
+                # download_url が未取得の場合、再度チェックして取得を試みる
+                from .updater import check_for_updates
+                info = check_for_updates()
+                if info and info.download_url:
+                    download_url = info.download_url
+
+            if download_url:
+                result = perform_dmg_update(download_url)
+                if result.get("restart"):
+                    # 成功時: アプリ終了をスケジュール
+                    import threading
+                    def _quit_later():
+                        import time
+                        time.sleep(1)
+                        os._exit(0)
+                    threading.Thread(target=_quit_later, daemon=True).start()
+            else:
+                result = {
+                    "success": False,
+                    "message": "DMG ダウンロード URL を取得できませんでした",
+                    "details": "GitHub Releases ページから手動でダウンロードしてください:\n"
+                               "https://github.com/sishimoto/TimeReaper/releases",
+                }
         else:
             # 開発環境 → git pull
             result = perform_git_update()
