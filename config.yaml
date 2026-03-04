@@ -106,6 +106,13 @@ classification_rules:
     - random
     - times-
     project: 全社活動
+  # カレンダーイベントのうち meeting 扱いしないもの（除外パターン）
+  calendar_non_meeting_patterns:
+  - お昼
+  - 不在
+  - 移動
+  - 出社日
+  - 開発$
   # カレンダーイベントタイトル → プロジェクト推定ルール
   calendar_project_rules:
   - keywords:

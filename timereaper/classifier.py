@@ -114,6 +114,12 @@ class ActivityClassifier:
                 "work_phase": rule.get("work_phase", ""),
             })
 
+        # 非 meeting 除外パターン
+        self._non_meeting_patterns: list[re.Pattern] = [
+            re.compile(kw, re.IGNORECASE)
+            for kw in rules.get("calendar_non_meeting_patterns", [])
+        ]
+
         # デフォルトプロジェクトタイプ
         self.default_project_type = rules.get("default_project_type", "")
 
@@ -300,6 +306,20 @@ class ActivityClassifier:
         # チャンネル名でプロジェクトタイプ判定も試行
         _, cost = self._detect_project_type(channel)
         return cost
+
+    def is_meeting_event(self, title: str) -> bool:
+        """カレンダーイベントが meeting として扱うべきか判定する
+
+        config.yaml の calendar_non_meeting_patterns に
+        マッチしたイベントは meeting 扱いしない（除外）。
+        """
+        if not title:
+            return False
+        for pattern in self._non_meeting_patterns:
+            if pattern.search(title):
+                logger.debug(f"非meetingイベント除外: {title!r}")
+                return False
+        return True
 
     def _match_calendar_project(self, meeting_title: str) -> str:
         """カレンダーイベントタイトルからプロジェクトを推定する

@@ -172,8 +172,8 @@ class TimeReaperApp(rumps.App):
                         # アクティビティを分類（会議タイトルも渡す）
                         classification = self.classifier.classify(window_info, meeting_title=meeting_title)
 
-                        # 会議中は work_phase を meeting に上書き
-                        if current_meeting:
+                        # 会議中かつ meeting イベントなら work_phase を meeting に上書き
+                        if current_meeting and self.classifier.is_meeting_event(meeting_title):
                             classification["work_phase"] = "meeting"
 
                         # データベースに保存（アクティブ時のみ）

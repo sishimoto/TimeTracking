@@ -99,8 +99,8 @@ def cmd_monitor(args):
 
                     classification = classifier.classify(info, meeting_title=meeting_title)
 
-                    # 会議中は work_phase を meeting に上書き
-                    if current_meeting:
+                    # 会議中かつ meeting イベントなら work_phase を meeting に上書き
+                    if current_meeting and classifier.is_meeting_event(meeting_title):
                         classification["work_phase"] = "meeting"
 
                     # アクティブ時のみ記録
