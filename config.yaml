@@ -109,10 +109,24 @@ classification_rules:
   # カレンダーイベントのうち meeting 扱いしないもの（除外パターン）
   calendar_non_meeting_patterns:
   - お昼
+  - 昼食
+  - ランチ
   - 不在
   - 移動
-  - 出社日
+  - 出社
   - 開発$
+  - 私用
+  - 帰宅
+  - Block
+  - 子供
+  - family
+  - ^work$
+  - 在宅
+  - 健康診断
+  - 休暇
+  - 休み
+  - レンタカー
+  - 予定あり
   # カレンダーイベントタイトル → プロジェクト推定ルール
   calendar_project_rules:
   - keywords:
