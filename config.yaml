@@ -66,8 +66,6 @@ classification_rules:
       - meet\.google\.com
       - Microsoft Teams
       - FaceTime
-    communication:
-      keywords:
       - Slack
       - Discord
       - Messages
@@ -153,20 +151,12 @@ classification_rules:
   - その他
   task_categories:
   - 分析
-  - カスタム開発-要件定義
-  - カスタム開発-設計
-  - カスタム開発-実装
-  - カスタム開発-テスト
-  - プロダクト開発-要件定義
-  - プロダクト開発-設計
-  - プロダクト開発-実装
-  - プロダクト開発-テスト
-  - 導入-基本設計
-  - 導入-導入試験・検証
-  - 導入-導入作業
-  - 導入-トレーニング・顧客説明
+  - 要件定義
+  - 設計
+  - 実装
+  - テスト
+  - 導入
   - meeting
-  - communication
   - email
   - documentation
   - planning

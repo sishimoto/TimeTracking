@@ -51,7 +51,7 @@ DEV_SUB_PHASES = ["要件定義", "設計", "実装", "テスト"]
 
 # --- 独立カテゴリ（プロジェクトタイプと合成しない） ---
 STANDALONE_PHASES = {
-    "meeting", "communication", "email", "research",
+    "meeting", "email", "research",
     "documentation", "planning",
 }
 
@@ -162,7 +162,7 @@ class ActivityClassifier:
         # URL サービスからの独立カテゴリ上書き
         url_service_overrides = {
             "Google Meet": "meeting",
-            "Slack": "communication",
+            "Slack": "meeting",
             "Google Docs": "documentation",
             "Confluence": "documentation",
             "Notion": "documentation",
@@ -171,8 +171,12 @@ class ActivityClassifier:
             "Figma": "設計",  # サブフェーズとして扱う
         }
 
-        # 1. 独立カテゴリの判定（meeting / communication / email 等）
+        # 1. 独立カテゴリの判定（meeting / email 等）
         standalone = self._match_standalone(search_text)
+
+        # communication → meeting に統合
+        if standalone == "communication":
+            standalone = "meeting"
 
         # URL サービスから独立カテゴリを強化
         if not standalone and url_service in url_service_overrides:
@@ -228,13 +232,8 @@ class ActivityClassifier:
                     if override not in STANDALONE_PHASES:
                         sub_phase = override
 
-                # 6. タスク分類 = プロジェクトタイプ + サブフェーズ
-                if project_type:
-                    if sub_phase:
-                        result["work_phase"] = f"{project_type}-{sub_phase}"
-                    else:
-                        result["work_phase"] = project_type
-                elif sub_phase:
+                # 6. タスク分類 = サブフェーズのみ（プロジェクトタイプとの合成はしない）
+                if sub_phase:
                     result["work_phase"] = sub_phase
 
         logger.debug(
