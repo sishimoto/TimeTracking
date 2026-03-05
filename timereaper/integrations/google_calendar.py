@@ -30,7 +30,7 @@ class GoogleCalendarSync:
 
     @property
     def is_enabled(self) -> bool:
-        return self.gc_config.get("enabled", False)
+        return bool(self.gc_config.get("enabled", False))
 
     def authenticate(self):
         """Google Calendar APIの認証を行う"""
@@ -113,7 +113,7 @@ class GoogleCalendarSync:
         for calendar_id in self.calendar_ids:
             try:
                 events_result = (
-                    self._service.events()
+                    self._service.events()  # type: ignore[union-attr]
                     .list(
                         calendarId=calendar_id,
                         timeMin=time_min,

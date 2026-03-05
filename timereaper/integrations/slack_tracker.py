@@ -64,7 +64,7 @@ class SlackTracker:
 
         try:
             # ユーザーの会話一覧を取得
-            response = self._client.conversations_list(
+            response = self._client.conversations_list(  # type: ignore[union-attr]
                 types="public_channel,private_channel,im,mpim",
                 limit=limit,
                 exclude_archived=True,
@@ -84,7 +84,7 @@ class SlackTracker:
                     user_id = channel.get("user", "")
                     if user_id:
                         try:
-                            user_info = self._client.users_info(user=user_id)
+                            user_info = self._client.users_info(user=user_id)  # type: ignore[union-attr]
                             channel_info["conversation_with"] = (
                                 user_info["user"].get("real_name", "")
                                 or user_info["user"].get("name", "")

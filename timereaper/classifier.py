@@ -280,7 +280,7 @@ class ActivityClassifier:
             match_text = app_name if rule["match_target"] == "app_name" else text
             for pattern in rule["patterns"]:
                 if pattern.search(match_text):
-                    return rule["name"]
+                    return str(rule["name"])
         return ""
 
     def _extract_slack_channel(self, window_title: str) -> str:
@@ -305,7 +305,7 @@ class ActivityClassifier:
         channel_lower = channel.lower()
         for rule in self.slack_channel_rules:
             if channel_lower in rule["channels"]:
-                return rule["project"]
+                return str(rule["project"])
         # チャンネル名でプロジェクトタイプ判定も試行
         _, cost = self._detect_project_type(channel)
         return cost
@@ -346,7 +346,7 @@ class ActivityClassifier:
         for rule in self.calendar_project_rules:
             for pattern in rule["patterns"]:
                 if pattern.search(meeting_title):
-                    return rule["project"]
+                    return str(rule["project"])
         return ""
 
     def _get_app_category(self, app_name: str) -> str:

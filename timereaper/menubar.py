@@ -116,8 +116,8 @@ class TimeReaperApp(rumps.App):
         self._tracker_thread.start()
         self.title = "⏱ REC"
         # メニュー項目を更新
-        if "▶ 記録開始" in [item.title for item in self.menu.values() if hasattr(item, 'title')]:
-            for item in self.menu.values():
+        if "▶ 記録開始" in [item.title for item in self.menu.values() if hasattr(item, 'title')]:  # type: ignore[attr-defined]
+            for item in self.menu.values():  # type: ignore[attr-defined]
                 if hasattr(item, 'title') and item.title == "▶ 記録開始":
                     item.title = "⏸ 記録停止"
         logger.info("トラッキング開始")
@@ -256,7 +256,7 @@ class TimeReaperApp(rumps.App):
             minutes = int((total_seconds % 3600) // 60)
             status_text = f"今日: {hours}h {minutes}m"
 
-            for item in self.menu.values():
+            for item in self.menu.values():  # type: ignore[attr-defined]
                 if hasattr(item, 'title') and item.title.startswith("今日"):
                     item.title = status_text
                     break

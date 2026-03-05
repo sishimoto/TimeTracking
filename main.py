@@ -16,8 +16,17 @@ from timereaper.database import init_db
 
 
 def setup_logging(verbose: bool = False):
-    """ロギングの設定"""
-    level = logging.DEBUG if verbose else logging.INFO
+    """ロギングの設定
+
+    優先順位: --verbose フラグ > config.yaml の logging.level > デフォルト (INFO)
+    """
+    if verbose:
+        level = logging.DEBUG
+    else:
+        cfg = get_config()
+        level_name = cfg.get("logging", {}).get("level", "INFO").upper()
+        level = getattr(logging, level_name, logging.INFO)
+
     logging.basicConfig(
         level=level,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",

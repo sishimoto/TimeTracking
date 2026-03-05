@@ -193,7 +193,7 @@ def call_openai_api(prompt: str, config: dict) -> Optional[list[dict]]:
         if isinstance(parsed, dict):
             for key in ("classifications", "results", "data"):
                 if key in parsed and isinstance(parsed[key], list):
-                    return parsed[key]
+                    return parsed[key]  # type: ignore[no-any-return]
             # 辞書の最初のリスト値を探す
             for v in parsed.values():
                 if isinstance(v, list):
@@ -329,7 +329,7 @@ def apply_classifications(
 
 
 def classify_with_llm(
-    target_date: str = None,
+    target_date: Optional[str] = None,
     dry_run: bool = False,
     min_confidence: float = 0.5,
 ) -> dict:

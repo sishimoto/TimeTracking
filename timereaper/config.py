@@ -61,8 +61,9 @@ def load_config(config_path: str | None = None) -> dict[str, Any]:
 
 def get_config() -> dict[str, Any]:
     """現在の設定を取得する（未読み込みなら読み込む）"""
+    global _config
     if _config is None:
-        load_config()
+        _config = load_config()
     return _config
 
 

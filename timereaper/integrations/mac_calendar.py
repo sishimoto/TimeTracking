@@ -60,7 +60,7 @@ class MacCalendarSync:
 
     @property
     def is_enabled(self) -> bool:
-        return self.cal_config.get("enabled", False)
+        return bool(self.cal_config.get("enabled", False))
 
     def _run_calhelper(self, args: list[str], timeout: int = CALHELPER_TIMEOUT) -> Optional[dict | list]:
         """CalHelper.app を起動して JSON 結果を返す
@@ -104,7 +104,7 @@ class MacCalendarSync:
                     if isinstance(data, dict) and "error" in data:
                         logger.error(f"CalHelper エラー: {data['error']}")
                         return None
-                    return data
+                    return data  # type: ignore[no-any-return]
                 except json.JSONDecodeError:
                     # まだ書き途中の可能性
                     time.sleep(0.5)

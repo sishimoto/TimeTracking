@@ -70,7 +70,7 @@ def check_for_updates(timeout: int = 5) -> Optional[UpdateInfo]:
 
         # --- 1. GitHub Releases から最新を取得 ---
         release_info = None
-        release_version = (0,)
+        release_version: tuple[int, ...] = (0,)
 
         response = requests.get(
             GITHUB_ALL_RELEASES_URL, headers=headers, timeout=timeout,
@@ -80,7 +80,7 @@ def check_for_updates(timeout: int = 5) -> Optional[UpdateInfo]:
         if response.status_code == 200:
             releases = response.json()
             best = None
-            best_version = (0,)
+            best_version: tuple[int, ...] = (0,)
             for rel in releases:
                 if rel.get("draft", False):
                     continue
@@ -114,12 +114,12 @@ def check_for_updates(timeout: int = 5) -> Optional[UpdateInfo]:
 
         # --- 2. タグから最新を取得（Release 未作成のバージョンも検出） ---
         tag_info = _check_tags_fallback(current, timeout)
-        tag_version = (0,)
+        tag_version: tuple[int, ...] = (0,)
         if tag_info is not None:
             tag_version = _parse_release_version(tag_info.latest_version)
 
         # --- 3. Release とタグのうち、より新しい方を採用 ---
-        if tag_version > release_version:
+        if tag_info is not None and tag_version > release_version:
             logger.debug(f"タグ v{tag_info.latest_version} が Release より新しい")
             result = tag_info
         elif release_info is not None:
