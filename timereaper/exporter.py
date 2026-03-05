@@ -287,31 +287,31 @@ def export_daily_pdf(target_date: str) -> bytes:
 
     style_title = ParagraphStyle(
         "CustomTitle", parent=styles["Title"],
-        fontName="JapaneseFont", fontSize=20, leading=26,
+        fontName="HeiseiKakuGo-W5", fontSize=20, leading=26,
         textColor=colors.HexColor("#1a1a2e"),
         spaceAfter=4,
     )
     style_subtitle = ParagraphStyle(
         "CustomSubtitle", parent=styles["Normal"],
-        fontName="JapaneseFont", fontSize=11,
+        fontName="HeiseiKakuGo-W5", fontSize=11,
         textColor=colors.HexColor("#666666"),
         spaceAfter=12,
     )
     style_section = ParagraphStyle(
         "SectionHeader", parent=styles["Heading2"],
-        fontName="JapaneseFont-Bold", fontSize=14, leading=20,
+        fontName="HeiseiKakuGo-W5", fontSize=14, leading=20,
         textColor=colors.HexColor("#1a1a2e"),
         spaceBefore=16, spaceAfter=8,
         borderWidth=0,
     )
     style_body = ParagraphStyle(
         "CustomBody", parent=styles["Normal"],
-        fontName="JapaneseFont", fontSize=10, leading=14,
+        fontName="HeiseiKakuGo-W5", fontSize=10, leading=14,
         textColor=colors.HexColor("#333333"),
     )
     style_small = ParagraphStyle(
         "SmallText", parent=styles["Normal"],
-        fontName="JapaneseFont", fontSize=8, leading=10,
+        fontName="HeiseiKakuGo-W5", fontSize=8, leading=10,
         textColor=colors.HexColor("#888888"),
     )
 
@@ -435,26 +435,26 @@ def export_monthly_pdf(year: int, month: int) -> bytes:
 
     style_title = ParagraphStyle(
         "CustomTitle2", parent=styles["Title"],
-        fontName="JapaneseFont", fontSize=20, leading=26,
+        fontName="HeiseiKakuGo-W5", fontSize=20, leading=26,
         textColor=colors.HexColor("#1a1a2e"),
         spaceAfter=4,
     )
     style_subtitle = ParagraphStyle(
         "CustomSubtitle2", parent=styles["Normal"],
-        fontName="JapaneseFont", fontSize=11,
+        fontName="HeiseiKakuGo-W5", fontSize=11,
         textColor=colors.HexColor("#666666"),
         spaceAfter=12,
     )
     style_section = ParagraphStyle(
         "SectionHeader2", parent=styles["Heading2"],
-        fontName="JapaneseFont-Bold", fontSize=14, leading=20,
+        fontName="HeiseiKakuGo-W5", fontSize=14, leading=20,
         textColor=colors.HexColor("#1a1a2e"),
         spaceBefore=16, spaceAfter=8,
         borderWidth=0,
     )
     style_small = ParagraphStyle(
         "SmallText2", parent=styles["Normal"],
-        fontName="JapaneseFont", fontSize=8, leading=10,
+        fontName="HeiseiKakuGo-W5", fontSize=8, leading=10,
         textColor=colors.HexColor("#888888"),
     )
 
@@ -541,61 +541,18 @@ _font_registered = False
 
 
 def _register_japanese_font():
-    """日本語フォントを登録する（macOS のヒラギノを使用）"""
+    """日本語フォントを登録する（reportlab 内蔵の CID フォントを使用）"""
     global _font_registered
     if _font_registered:
         return
 
     from reportlab.pdfbase import pdfmetrics
-    from reportlab.pdfbase.ttfonts import TTFont
-    import os
+    from reportlab.pdfbase.cidfonts import UnicodeCIDFont
 
-    # macOS 標準フォント候補
-    font_paths = [
-        # ヒラギノ角ゴシック
-        "/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc",
-        "/System/Library/Fonts/ヒラギノ角ゴ ProN W3.otf",
-        "/System/Library/Fonts/Hiragino Sans GB W3.otf",
-        "/Library/Fonts/ヒラギノ角ゴシック W3.ttc",
-        # ヒラギノ角ゴシック Bold
-        "/System/Library/Fonts/ヒラギノ角ゴシック W6.ttc",
-        "/Library/Fonts/ヒラギノ角ゴシック W6.ttc",
-    ]
-
-    # Regular フォント
-    regular_registered = False
-    for path in font_paths[:4]:
-        if os.path.exists(path):
-            try:
-                pdfmetrics.registerFont(TTFont("JapaneseFont", path, subfontIndex=0))
-                regular_registered = True
-                break
-            except Exception:
-                continue
-
-    if not regular_registered:
-        # フォールバック: Helvetica ベース（日本語は文字化けする可能性あり）
-        pdfmetrics.registerFont(TTFont("JapaneseFont", "/System/Library/Fonts/Helvetica.ttc", subfontIndex=0))
-
-    # Bold フォント
-    bold_registered = False
-    for path in font_paths[4:]:
-        if os.path.exists(path):
-            try:
-                pdfmetrics.registerFont(TTFont("JapaneseFont-Bold", path, subfontIndex=0))
-                bold_registered = True
-                break
-            except Exception:
-                continue
-
-    if not bold_registered:
-        # JapaneseFont-Bold が登録できなかった場合、Regular をBoldとしても使う
-        try:
-            pdfmetrics.registerFont(TTFont("JapaneseFont-Bold", font_paths[0], subfontIndex=0))
-        except Exception:
-            # 最終フォールバック
-            from reportlab.pdfbase.ttfonts import TTFont
-            pdfmetrics.registerFont(TTFont("JapaneseFont-Bold", "/System/Library/Fonts/Helvetica.ttc", subfontIndex=0))
+    # reportlab 内蔵の CID フォント（日本語ゴシック体）
+    # macOS のヒラギノは PostScript アウトラインのため TTFont では読めない
+    pdfmetrics.registerFont(UnicodeCIDFont("HeiseiKakuGo-W5"))
+    pdfmetrics.registerFont(UnicodeCIDFont("HeiseiMin-W3"))
 
     _font_registered = True
 
@@ -609,12 +566,12 @@ def _make_stat_card(label: str, value: str, color_hex: str):
 
     p_label = Paragraph(
         label,
-        ParagraphStyle("cl", fontName="JapaneseFont", fontSize=9,
+        ParagraphStyle("cl", fontName="HeiseiKakuGo-W5", fontSize=9,
                         textColor=colors.HexColor("#666666"), leading=12),
     )
     p_value = Paragraph(
         f'<font color="{color_hex}"><b>{value}</b></font>',
-        ParagraphStyle("cv", fontName="JapaneseFont-Bold", fontSize=18,
+        ParagraphStyle("cv", fontName="HeiseiKakuGo-W5", fontSize=18,
                         textColor=colors.HexColor(color_hex), leading=24),
     )
 
@@ -643,11 +600,11 @@ def _build_detail_table(
     from reportlab.lib.styles import ParagraphStyle
 
     style_header = ParagraphStyle(
-        "th", fontName="JapaneseFont-Bold", fontSize=9,
+        "th", fontName="HeiseiKakuGo-W5", fontSize=9,
         textColor=colors.white, leading=12,
     )
     style_cell = ParagraphStyle(
-        "td", fontName="JapaneseFont", fontSize=9,
+        "td", fontName="HeiseiKakuGo-W5", fontSize=9,
         textColor=colors.HexColor("#333333"), leading=12,
     )
 
@@ -663,7 +620,7 @@ def _build_detail_table(
     t.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#4a90d9")),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("FONTNAME", (0, 0), (-1, 0), "JapaneseFont-Bold"),
+        ("FONTNAME", (0, 0), (-1, 0), "HeiseiKakuGo-W5"),
         ("FONTSIZE", (0, 0), (-1, 0), 9),
         ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
         ("TOPPADDING", (0, 0), (-1, 0), 8),
@@ -707,7 +664,7 @@ def _build_horizontal_bar_section(
         color = colors.HexColor(palette[i % len(palette)])
 
         # ラベル
-        drawing.add(String(0, y + 4, name, fontName="JapaneseFont", fontSize=9,
+        drawing.add(String(0, y + 4, name, fontName="HeiseiKakuGo-W5", fontSize=9,
                            fillColor=colors.HexColor("#333333")))
 
         # バー
@@ -720,7 +677,7 @@ def _build_horizontal_bar_section(
         drawing.add(String(
             55 * mm + w + 3, y + 3,
             f"{_fmt_duration(sec)} ({pct:.0f}%)",
-            fontName="JapaneseFont", fontSize=8,
+            fontName="HeiseiKakuGo-W5", fontSize=8,
             fillColor=colors.HexColor("#666666"),
         ))
 
@@ -774,7 +731,7 @@ def _build_pie_section(
         drawing.add(String(
             x_offset + 14, y + 3,
             f"{name}  {_fmt_duration(sec)} ({pct:.0f}%)",
-            fontName="JapaneseFont", fontSize=9,
+            fontName="HeiseiKakuGo-W5", fontSize=9,
             fillColor=colors.HexColor("#333333"),
         ))
 
@@ -830,7 +787,7 @@ def _build_hourly_chart(hourly_data: list[dict]):
         if i % 3 == 0:
             drawing.add(String(
                 x_start + i * (bar_w + 1), y_base - 10,
-                f"{h}", fontName="JapaneseFont", fontSize=7,
+                f"{h}", fontName="HeiseiKakuGo-W5", fontSize=7,
                 fillColor=colors.HexColor("#888888"),
             ))
 
@@ -880,7 +837,7 @@ def _build_daily_trend_chart(days: list[dict]):
         if day_num == 1 or day_num % 5 == 0:
             drawing.add(String(
                 x, y_base - 10,
-                str(day_num), fontName="JapaneseFont", fontSize=7,
+                str(day_num), fontName="HeiseiKakuGo-W5", fontSize=7,
                 fillColor=colors.HexColor("#888888"),
             ))
 

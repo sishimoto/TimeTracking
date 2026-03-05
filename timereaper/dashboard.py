@@ -277,7 +277,7 @@ def create_app():
                 pdf_data,
                 mimetype="application/pdf",
                 headers={
-                    "Content-Disposition": f"attachment; filename=timereaper-daily-{target_date}.pdf",
+                    "Content-Disposition": f"attachment; filename*=UTF-8''日次サマリー_{target_date}.pdf",
                 },
             )
         else:
@@ -287,7 +287,7 @@ def create_app():
                 md_text,
                 mimetype="text/markdown; charset=utf-8",
                 headers={
-                    "Content-Disposition": f"attachment; filename=timereaper-daily-{target_date}.md",
+                    "Content-Disposition": f"attachment; filename*=UTF-8''日次サマリー_{target_date}.md",
                 },
             )
 
@@ -307,7 +307,7 @@ def create_app():
                 pdf_data,
                 mimetype="application/pdf",
                 headers={
-                    "Content-Disposition": f"attachment; filename=timereaper-monthly-{year}-{month:02d}.pdf",
+                    "Content-Disposition": f"attachment; filename*=UTF-8''月次サマリー_{year}年{month:02d}月.pdf",
                 },
             )
         else:
@@ -317,7 +317,7 @@ def create_app():
                 md_text,
                 mimetype="text/markdown; charset=utf-8",
                 headers={
-                    "Content-Disposition": f"attachment; filename=timereaper-monthly-{year}-{month:02d}.md",
+                    "Content-Disposition": f"attachment; filename*=UTF-8''月次サマリー_{year}年{month:02d}月.md",
                 },
             )
 
