@@ -273,13 +273,13 @@ def perform_git_update() -> dict:
         
         pull_output = result.stdout.strip()
         
-        venv_pip = os.path.join(project_dir, "venv", "bin", "pip")
+        venv_python = os.path.join(project_dir, "venv", "bin", "python")
         requirements = os.path.join(project_dir, "requirements.txt")
         
-        if os.path.exists(venv_pip) and os.path.exists(requirements):
+        if os.path.exists(venv_python) and os.path.exists(requirements):
             logger.info("依存パッケージを更新中...")
             result = subprocess.run(
-                [venv_pip, "install", "-r", requirements, "-q"],
+                [venv_python, "-m", "pip", "install", "-r", requirements, "-q"],
                 capture_output=True, text=True, cwd=project_dir, timeout=120,
             )
             if result.returncode != 0:
