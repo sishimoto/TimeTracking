@@ -519,6 +519,26 @@
                 アイドル状態から復帰した際に、離席前の作業サマリーを通知で表示します。
             </p>
         </div>
+
+        <!-- macOS Permissions Section -->
+        <div class="settings-section">
+            <div class="section-header">
+                <h2>🔐 macOS 権限</h2>
+            </div>
+            <p class="section-desc">
+                TimeReaper の各機能に必要な macOS 権限の状態です。権限が不足している場合はシステム設定から許可してください。
+            </p>
+            <div class="settings-body" id="permissionsBody">
+                <div style="text-align: center; padding: 20px; color: var(--text-secondary);">
+                    読み込み中...
+                </div>
+            </div>
+            <div style="margin-top: 12px; text-align: right;">
+                <button onclick="loadPermissions()" style="background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-secondary); padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.2s;" onmouseover="this.style.borderColor='var(--accent-blue)';this.style.color='var(--accent-blue)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-secondary)'">
+                    🔄 再チェック
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Save Bar -->
@@ -725,8 +745,46 @@
             } catch(e) {}
         }
 
+        // --- macOS 権限チェック ---
+        async function loadPermissions() {
+            const body = document.getElementById('permissionsBody');
+            body.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-secondary);">確認中...</div>';
+            try {
+                const res = await fetch('/api/permissions');
+                const data = await res.json();
+                let html = '<div style="display: flex; flex-direction: column; gap: 10px;">';
+                data.permissions.forEach(p => {
+                    let statusIcon, statusText, statusColor;
+                    if (p.granted === true) {
+                        statusIcon = '✅'; statusText = '許可済み'; statusColor = 'var(--accent-green)';
+                    } else if (p.granted === false) {
+                        statusIcon = '❌'; statusText = '未許可'; statusColor = 'var(--accent-red)';
+                    } else {
+                        statusIcon = '❓'; statusText = '不明'; statusColor = 'var(--accent-yellow)';
+                    }
+                    html += '<div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px;">';
+                    html += '<div style="flex: 1;">';
+                    html += '<div style="font-size: 14px; font-weight: 500; color: var(--text-primary);">' + p.name + '</div>';
+                    html += '<div style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">' + p.description + '</div>';
+                    if (p.granted === false) {
+                        html += '<div style="font-size: 11px; color: var(--accent-orange); margin-top: 4px;">📂 ' + p.setting_path + '</div>';
+                    }
+                    html += '</div>';
+                    html += '<div style="text-align: right; min-width: 80px;">';
+                    html += '<span style="font-size: 14px;">' + statusIcon + '</span> ';
+                    html += '<span style="font-size: 12px; color: ' + statusColor + ';">' + statusText + '</span>';
+                    html += '</div></div>';
+                });
+                html += '</div>';
+                body.innerHTML = html;
+            } catch(e) {
+                body.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--accent-red);">権限情報の取得に失敗しました</div>';
+            }
+        }
+
         // --- 起動 ---
         init();
+        loadPermissions();
     </script>
 </body>
 </html>

@@ -510,6 +510,90 @@ def create_app():
             "model": config["model"],
         })
 
+    @app.route("/api/permissions")
+    def api_permissions():
+        """macOS 権限の状態を確認して返す"""
+        import subprocess
+        import platform
+        permissions = []
+
+        # 1. アクセシビリティ
+        accessibility_granted = False
+        try:
+            from ApplicationServices import AXIsProcessTrusted
+            accessibility_granted = AXIsProcessTrusted()
+        except ImportError:
+            # pyobjc がない場合は AppleScript で簡易テスト
+            try:
+                r = subprocess.run(
+                    ["osascript", "-e",
+                     'tell application "System Events" to get name of first application process whose frontmost is true'],
+                    capture_output=True, timeout=5,
+                )
+                accessibility_granted = r.returncode == 0
+            except Exception:
+                pass
+        permissions.append({
+            "name": "アクセシビリティ",
+            "description": "アクティブウィンドウの検出に必要です",
+            "granted": accessibility_granted,
+            "setting_path": "システム設定 → プライバシーとセキュリティ → アクセシビリティ",
+        })
+
+        # 2. オートメーション (System Events)
+        automation_granted = False
+        try:
+            r = subprocess.run(
+                ["osascript", "-e",
+                 'tell application "System Events" to get name of first application process whose frontmost is true'],
+                capture_output=True, timeout=5,
+            )
+            automation_granted = r.returncode == 0
+        except Exception:
+            pass
+        permissions.append({
+            "name": "オートメーション（System Events）",
+            "description": "AppleScript 経由でウィンドウ情報を取得するために必要です",
+            "granted": automation_granted,
+            "setting_path": "システム設定 → プライバシーとセキュリティ → オートメーション",
+        })
+
+        # 3. 画面収録 (macOS 14+)
+        macos_version = int(platform.mac_ver()[0].split(".")[0]) if platform.mac_ver()[0] else 0
+        if macos_version >= 14:
+            screen_recording_granted = False
+            try:
+                from Quartz import CGPreflightScreenCaptureAccess
+                screen_recording_granted = CGPreflightScreenCaptureAccess()
+            except (ImportError, AttributeError):
+                # API unavailable — cannot determine
+                screen_recording_granted = None
+            permissions.append({
+                "name": "画面収録",
+                "description": "macOS 14 以降でウィンドウタイトルの取得に必要です",
+                "granted": screen_recording_granted,
+                "setting_path": "システム設定 → プライバシーとセキュリティ → 画面収録",
+            })
+
+        # 4. 通知
+        notification_granted = None  # 正確な確認は難しいため不明扱い
+        try:
+            import objc
+            UNUserNotificationCenter = objc.lookUpClass("UNUserNotificationCenter")
+            center = UNUserNotificationCenter.currentNotificationCenter()
+            # getNotificationSettingsWithCompletionHandler は非同期のため
+            # ここでは簡易的に None（不明）とする
+        except Exception:
+            pass
+        permissions.append({
+            "name": "通知",
+            "description": "アップデート通知やポモドーロ通知に使用します",
+            "granted": notification_granted,
+            "setting_path": "システム設定 → 通知 → TimeReaper",
+        })
+
+        return jsonify({"permissions": permissions})
+
     return app
 
 
