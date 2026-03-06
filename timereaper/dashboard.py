@@ -576,13 +576,37 @@ def create_app():
             })
 
         # 4. 通知
-        notification_granted = None  # 正確な確認は難しいため不明扱い
+        # rumps は NSUserNotificationCenter（旧API）を使用しており、
+        # UNUserNotificationCenter（新API）が利用できないため
+        # プログラムからの正確な権限確認ができない
+        notification_granted = None
         try:
+            import threading as _threading
             import objc
-            UNUserNotificationCenter = objc.lookUpClass("UNUserNotificationCenter")
-            center = UNUserNotificationCenter.currentNotificationCenter()
-            # getNotificationSettingsWithCompletionHandler は非同期のため
-            # ここでは簡易的に None（不明）とする
+            try:
+                UNUserNotificationCenter = objc.lookUpClass("UNUserNotificationCenter")
+                center = UNUserNotificationCenter.currentNotificationCenter()
+                _event = _threading.Event()
+                _result = [None]
+
+                def _on_settings(settings):
+                    try:
+                        auth_status = settings.authorizationStatus()
+                        _result[0] = auth_status in (2, 3)
+                    except Exception:
+                        pass
+                    _event.set()
+
+                center.getNotificationSettingsWithCompletionHandler_(_on_settings)
+                from CoreFoundation import CFRunLoopRunInMode, kCFRunLoopDefaultMode
+                import time as _time
+                _start = _time.monotonic()
+                while not _event.is_set() and (_time.monotonic() - _start) < 2.0:
+                    CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.1, False)
+                notification_granted = _result[0]
+            except objc.error:
+                # UNUserNotificationCenter が存在しない環境
+                pass
         except Exception:
             pass
         permissions.append({

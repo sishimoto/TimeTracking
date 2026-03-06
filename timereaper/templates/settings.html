@@ -768,6 +768,8 @@
                     html += '<div style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">' + p.description + '</div>';
                     if (p.granted === false) {
                         html += '<div style="font-size: 11px; color: var(--accent-orange); margin-top: 4px;">📂 ' + p.setting_path + '</div>';
+                    } else if (p.granted === null) {
+                        html += '<div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">⚠️ 自動確認不可 — ' + p.setting_path + ' で確認してください</div>';
                     }
                     html += '</div>';
                     html += '<div style="text-align: right; min-width: 80px;">';
