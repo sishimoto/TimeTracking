@@ -40,14 +40,16 @@ def _find_config_path() -> str:
 _DEFAULT_CONFIG_PATH = _find_config_path()
 
 _config: dict[str, Any] | None = None
+_loaded_config_path: str = _DEFAULT_CONFIG_PATH
 
 
 def load_config(config_path: str | None = None) -> dict[str, Any]:
     """設定ファイルを読み込んでキャッシュする"""
-    global _config
+    global _config, _loaded_config_path
     path = config_path or _DEFAULT_CONFIG_PATH
     with open(path, "r", encoding="utf-8") as f:
         _config = yaml.safe_load(f)
+    _loaded_config_path = path
     # パスの展開
     if "database" in _config and "path" in _config["database"]:
         _config["database"]["path"] = os.path.expanduser(_config["database"]["path"])
@@ -65,6 +67,11 @@ def get_config() -> dict[str, Any]:
     if _config is None:
         _config = load_config()
     return _config
+
+
+def get_config_path() -> str:
+    """現在読み込まれている設定ファイルのパスを返す"""
+    return _loaded_config_path
 
 
 def ensure_data_dir():

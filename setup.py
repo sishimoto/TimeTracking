@@ -67,6 +67,7 @@ OPTIONS = {
         "timereaper.monitor",
         "timereaper.classifier",
         "timereaper.database",
+        "timereaper.migration",
         "timereaper.dashboard",
         "timereaper.menubar",
         "urllib3.contrib.resolver",

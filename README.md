@@ -26,6 +26,7 @@
 - **Google Calendar連携** - API直接連携で打ち合わせの参加者・時間を自動取得
 - **Slack連携** - アクティブチャンネル・会話相手を記録
 - **CSVエクスポート** - データを外部ツールで分析可能
+- **ローカル移行エクスポート/インポート** - zip ファイルで別Macへデータ移行（クラウド不要）
 
 ## 構成
 
@@ -122,6 +123,19 @@ python main.py dashboard
 ```bash
 python main.py export --start 2026-02-01 --end 2026-02-28 --output feb_report.csv
 ```
+
+### ローカル移行（Mac買い替え時）
+
+```bash
+# 現在のMacでバックアップ作成
+python main.py export-data --output ~/Desktop/timereaper_migration.zip
+
+# 新しいMacで復元
+python main.py import-data --input ~/Desktop/timereaper_migration.zip --yes
+```
+
+- 設定画面 (`/settings`) からも「📦 ローカルデータ移行」で操作できます
+- インポート時は実行前に `~/.timereaper/backups/` へ自動バックアップを作成します
 
 ## 設定
 

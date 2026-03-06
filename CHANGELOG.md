@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/lang/ja/).
 
+## [Unreleased]
+
+### Added
+- ローカル移行用のデータ export/import 機能を追加（クラウド不要）
+  - CLI: `export-data` / `import-data`
+  - Web: 設定画面に「📦 ローカルデータ移行」セクションを追加
+  - インポート前に自動バックアップ（`~/.timereaper/backups/`）を作成
+  - DB は SQLite backup API で整合性を保った復元を実施
+
 ## [0.8.1] - 2026-03-06
 
 ### Added

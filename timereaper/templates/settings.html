@@ -335,6 +335,80 @@
         .pomodoro-controls .btn-start { background: var(--accent-green); color: #0d1117; border-color: var(--accent-green); }
         .pomodoro-controls .btn-stop { background: var(--accent-red); color: #fff; border-color: var(--accent-red); }
 
+        /* Migration section */
+        .migration-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .migration-actions button,
+        .migration-file-label {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.2s, border-color 0.2s;
+        }
+
+        .migration-actions button:hover,
+        .migration-file-label:hover {
+            background: var(--bg-card);
+            border-color: var(--accent-blue);
+        }
+
+        .migration-actions .btn-export {
+            color: var(--accent-blue);
+        }
+
+        .migration-actions .btn-import {
+            color: var(--accent-green);
+        }
+
+        .migration-actions .btn-import:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .migration-file-label input {
+            display: none;
+        }
+
+        .migration-filename {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .migration-status {
+            margin-top: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            background: var(--bg-secondary);
+            display: none;
+            white-space: pre-line;
+        }
+
+        .migration-status.visible {
+            display: block;
+        }
+
+        .migration-status.success {
+            border-color: var(--accent-green);
+            color: var(--accent-green);
+        }
+
+        .migration-status.error {
+            border-color: var(--accent-red);
+            color: var(--accent-red);
+        }
+
         /* Bottom padding so save-bar doesn't cover content */
         .settings-container { padding-bottom: 80px; }
 
@@ -374,6 +448,12 @@
 
             .save-bar { padding: 10px 12px; gap: 8px; }
             .save-bar button { font-size: 13px; padding: 6px 16px; }
+
+            .migration-actions button,
+            .migration-file-label {
+                width: 100%;
+                text-align: center;
+            }
         }
     </style>
 </head>
@@ -520,6 +600,27 @@
             </p>
         </div>
 
+        <!-- Local Migration Section -->
+        <div class="settings-section">
+            <div class="section-header">
+                <h2>📦 ローカルデータ移行</h2>
+            </div>
+            <p class="section-desc">
+                クラウドを使わずに、現在のデータを zip でエクスポート/インポートできます。
+                インポート時は現在データが上書きされ、実行前に自動バックアップが作成されます。
+            </p>
+            <div class="migration-actions">
+                <button class="btn-export" onclick="exportMigrationData()">📤 エクスポート</button>
+                <label class="migration-file-label">
+                    📁 zip を選択
+                    <input type="file" id="migrationFileInput" accept=".zip" onchange="onMigrationFileChange()">
+                </label>
+                <button class="btn-import" id="migrationImportBtn" onclick="importMigrationData()" disabled>📥 インポート</button>
+            </div>
+            <div class="migration-filename" id="migrationFilename">選択ファイル: なし</div>
+            <div class="migration-status" id="migrationStatus"></div>
+        </div>
+
         <!-- macOS Permissions Section -->
         <div class="settings-section">
             <div class="section-header">
@@ -552,6 +653,7 @@
         let originalSettings = null;
         let hasChanges = false;
         let pomodoroPollingId = null;
+        let selectedMigrationFile = null;
 
         // --- 初期化 ---
         async function init() {
@@ -743,6 +845,102 @@
                 const data = await res.json();
                 updatePomodoroUI(data);
             } catch(e) {}
+        }
+
+        // --- ローカル移行 ---
+        function setMigrationStatus(message, type = '') {
+            const el = document.getElementById('migrationStatus');
+            el.className = 'migration-status visible';
+            if (type) el.classList.add(type);
+            el.textContent = message;
+        }
+
+        async function exportMigrationData() {
+            setMigrationStatus('移行ファイルを生成しています...');
+            try {
+                const res = await fetch('/api/migration/export');
+                if (!res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    throw new Error(data.error || 'エクスポートに失敗しました');
+                }
+
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const cd = res.headers.get('Content-Disposition') || '';
+                const match = cd.match(/filename\*=UTF-8''([^;]+)/);
+                const filename = match ? decodeURIComponent(match[1]) : 'timereaper_migration.zip';
+
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+
+                setMigrationStatus('エクスポートが完了しました。zip を安全な場所に保存してください。', 'success');
+            } catch (e) {
+                setMigrationStatus('エクスポートに失敗しました: ' + e.message, 'error');
+            }
+        }
+
+        function onMigrationFileChange() {
+            const input = document.getElementById('migrationFileInput');
+            const file = input.files && input.files[0] ? input.files[0] : null;
+            selectedMigrationFile = file;
+            document.getElementById('migrationImportBtn').disabled = !file;
+            document.getElementById('migrationFilename').textContent = file
+                ? `選択ファイル: ${file.name}`
+                : '選択ファイル: なし';
+        }
+
+        async function importMigrationData() {
+            if (!selectedMigrationFile) {
+                setMigrationStatus('先に zip ファイルを選択してください。', 'error');
+                return;
+            }
+
+            const confirmed = window.confirm(
+                'インポートを実行すると現在のデータが上書きされます。\n続行しますか？'
+            );
+            if (!confirmed) return;
+
+            const importBtn = document.getElementById('migrationImportBtn');
+            importBtn.disabled = true;
+            setMigrationStatus('インポート中です。完了まで少し待ってください...');
+
+            try {
+                const formData = new FormData();
+                formData.append('file', selectedMigrationFile);
+                const res = await fetch('/api/migration/import', {
+                    method: 'POST',
+                    body: formData,
+                });
+                const data = await res.json();
+
+                if (!res.ok || !data.ok) {
+                    throw new Error(data.error || 'インポートに失敗しました');
+                }
+
+                let msg = `インポートが完了しました（復元ファイル数: ${data.restored_count}）`;
+                if (data.backup_path) {
+                    msg += `\n自動バックアップ: ${data.backup_path}`;
+                }
+                if (Array.isArray(data.warnings) && data.warnings.length > 0) {
+                    msg += `\n注意:\n- ${data.warnings.join('\n- ')}`;
+                }
+                if (data.restart_recommended) {
+                    msg += '\n反映のため、TimeReaper の再起動を推奨します。';
+                }
+                setMigrationStatus(msg, 'success');
+
+                // 設定表示を最新化
+                await loadSettings();
+            } catch (e) {
+                setMigrationStatus('インポートに失敗しました: ' + e.message, 'error');
+            } finally {
+                importBtn.disabled = !selectedMigrationFile;
+            }
         }
 
         // --- macOS 権限チェック ---

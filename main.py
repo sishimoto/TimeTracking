@@ -219,6 +219,47 @@ def cmd_export(args):
     print(f"✅ {len(activities)} 件のレコードを {output} にエクスポートしました")
 
 
+def cmd_export_data(args):
+    """ローカル移行用データを zip でエクスポート"""
+    from timereaper.migration import create_migration_archive
+
+    archive_path = create_migration_archive(
+        output_path=args.output,
+        include_config=not args.skip_config,
+    )
+    print("✅ ローカル移行ファイルを作成しました")
+    print(f"  出力先: {archive_path}")
+
+
+def cmd_import_data(args):
+    """ローカル移行用 zip をインポート"""
+    from timereaper.migration import import_migration_archive
+
+    if not os.path.exists(args.input):
+        print(f"❌ ファイルが見つかりません: {args.input}")
+        sys.exit(1)
+
+    if not args.yes:
+        print("⚠️  インポートを実行すると現在データが上書きされます。")
+        confirm = input("続行しますか？ [y/N]: ").strip().lower()
+        if confirm not in ("y", "yes"):
+            print("中止しました")
+            return
+
+    result = import_migration_archive(
+        archive_path=args.input,
+        restore_config=not args.skip_config,
+        create_backup=not args.no_backup,
+    )
+    print("✅ インポートが完了しました")
+    print(f"  復元ファイル数: {result.get('restored_count', 0)}")
+    if result.get("backup_path"):
+        print(f"  インポート前バックアップ: {result['backup_path']}")
+    for warning in result.get("warnings", []):
+        print(f"  ⚠ {warning}")
+    print("ℹ 反映のため、必要に応じて TimeReaper を再起動してください。")
+
+
 def cmd_cleanup(args):
     """データベースの重複レコードを削除"""
     from timereaper.database import deduplicate_activity_log
@@ -251,6 +292,8 @@ def main():
   python main.py dashboard      # ダッシュボードのみ起動
   python main.py sync-calendar  # Google Calendar同期
   python main.py export --start 2025-01-01 --end 2025-01-31
+  python main.py export-data --output ~/Desktop/timereaper_backup.zip
+  python main.py import-data --input ~/Desktop/timereaper_backup.zip --yes
         """,
     )
     parser.add_argument("-v", "--verbose", action="store_true", help="詳細ログを表示")
@@ -284,6 +327,34 @@ def main():
     exp_parser.add_argument("--end", type=str, help="終了日 (YYYY-MM-DD)")
     exp_parser.add_argument("--output", type=str, help="出力ファイル名")
 
+    # export-data
+    exp_data_parser = subparsers.add_parser("export-data", help="ローカル移行用 zip を作成")
+    exp_data_parser.add_argument("--output", type=str, help="出力 zip パス（省略時はカレント配下）")
+    exp_data_parser.add_argument(
+        "--skip-config",
+        action="store_true",
+        help="config.yaml を移行ファイルに含めない",
+    )
+
+    # import-data
+    imp_data_parser = subparsers.add_parser("import-data", help="ローカル移行用 zip を復元")
+    imp_data_parser.add_argument("--input", type=str, required=True, help="入力 zip パス")
+    imp_data_parser.add_argument(
+        "--skip-config",
+        action="store_true",
+        help="config.yaml を復元しない",
+    )
+    imp_data_parser.add_argument(
+        "--no-backup",
+        action="store_true",
+        help="インポート前バックアップを作成しない",
+    )
+    imp_data_parser.add_argument(
+        "--yes",
+        action="store_true",
+        help="確認プロンプトを表示せず実行",
+    )
+
     # cleanup
     cleanup_parser = subparsers.add_parser("cleanup", help="重複レコードを削除")
     cleanup_parser.add_argument(
@@ -313,6 +384,8 @@ def main():
         "dashboard": cmd_dashboard,
         "sync-calendar": cmd_sync_calendar,
         "export": cmd_export,
+        "export-data": cmd_export_data,
+        "import-data": cmd_import_data,
         "cleanup": cmd_cleanup,
     }
 

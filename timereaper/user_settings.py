@@ -47,6 +47,11 @@ def _ensure_dir():
     _SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 
+def get_user_settings_path() -> Path:
+    """ユーザー設定ファイルのパスを返す"""
+    return _SETTINGS_PATH
+
+
 def load_user_settings() -> dict[str, Any]:
     """ユーザー設定を読み込む（ファイルがなければデフォルトを返す）"""
     global _settings

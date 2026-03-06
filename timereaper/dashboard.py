@@ -4,10 +4,11 @@ Webダッシュボード - Flask API
 """
 
 import os
-from datetime import date, timedelta
-from flask import Flask, jsonify, request, render_template, send_from_directory
+from datetime import date, timedelta, datetime
+from flask import Flask, jsonify, request, render_template, send_from_directory, send_file, after_this_request
 from flask_cors import CORS
 import requests
+from typing import Any
 
 from .config import get_config
 from .database import (
@@ -329,6 +330,76 @@ def create_app():
         report = get_monthly_report(year, month)
         return jsonify(report)
 
+    # --- ローカル移行 API ---
+    @app.route("/api/migration/export")
+    def api_migration_export():
+        """ローカル移行用の zip を生成してダウンロードする"""
+        import shutil
+        import tempfile
+
+        from .migration import create_migration_archive
+
+        temp_dir = tempfile.mkdtemp(prefix="timereaper-migration-export-")
+        archive_name = f"timereaper_migration_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+        archive_path = create_migration_archive(
+            output_path=os.path.join(temp_dir, archive_name),
+            include_config=True,
+        )
+
+        @after_this_request
+        def cleanup(response):
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            return response
+
+        return send_file(
+            archive_path,
+            mimetype="application/zip",
+            as_attachment=True,
+            download_name=os.path.basename(archive_path),
+        )
+
+    @app.route("/api/migration/import", methods=["POST"])
+    def api_migration_import():
+        """ローカル移行 zip を取り込み、現在環境へ復元する"""
+        import tempfile
+
+        from .migration import import_migration_archive
+
+        uploaded = request.files.get("file")
+        if uploaded is None or uploaded.filename == "":
+            return jsonify({"ok": False, "error": "zip ファイルを選択してください"}), 400
+
+        filename = uploaded.filename or ""
+        if not filename.lower().endswith(".zip"):
+            return jsonify({"ok": False, "error": "zip ファイルのみ取り込めます"}), 400
+
+        fd, temp_path = tempfile.mkstemp(prefix="timereaper-migration-import-", suffix=".zip")
+        os.close(fd)
+        try:
+            uploaded.save(temp_path)
+            result = import_migration_archive(
+                archive_path=temp_path,
+                restore_config=True,
+                create_backup=True,
+            )
+            return jsonify({
+                "ok": True,
+                "message": "データのインポートが完了しました",
+                "backup_path": result.get("backup_path"),
+                "restored_count": result.get("restored_count", 0),
+                "warnings": result.get("warnings", []),
+                "restart_recommended": True,
+            })
+        except ValueError as e:
+            return jsonify({"ok": False, "error": str(e)}), 400
+        except Exception as e:
+            return jsonify({"ok": False, "error": f"インポートに失敗しました: {e}"}), 500
+        finally:
+            try:
+                os.remove(temp_path)
+            except OSError:
+                pass
+
     # --- アップデート API ---
     @app.route("/api/check-update")
     def api_check_update():
@@ -515,7 +586,7 @@ def create_app():
         """macOS 権限の状態を確認して返す"""
         import subprocess
         import platform
-        permissions = []
+        permissions: list[dict[str, Any]] = []
 
         # 1. アクセシビリティ
         accessibility_granted = False
@@ -582,7 +653,7 @@ def create_app():
         # 3. 画面収録 (macOS 14+)
         macos_version = int(platform.mac_ver()[0].split(".")[0]) if platform.mac_ver()[0] else 0
         if macos_version >= 14:
-            screen_recording_granted = False
+            screen_recording_granted: bool | None = False
             try:
                 from Quartz import CGPreflightScreenCaptureAccess
                 screen_recording_granted = CGPreflightScreenCaptureAccess()
