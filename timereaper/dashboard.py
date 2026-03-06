@@ -589,17 +589,27 @@ def create_app():
             except (ImportError, AttributeError):
                 screen_recording_granted = None
 
-            # CGPreflightScreenCaptureAccess が False でも
-            # 実際にウィンドウタイトルを取得できるか機能テスト
+            # CGPreflightScreenCaptureAccess は再ビルド後に誤って False を返すため
+            # CGWindowListCopyWindowInfo で非システムアプリのウィンドウタイトルが
+            # 取得できるかで機能テスト（画面収録が許可されていれば取得可能）
             if not screen_recording_granted:
                 try:
-                    r = subprocess.run(
-                        ["osascript", "-e",
-                         'tell application "System Events" to get name of front window of first application process whose frontmost is true'],
-                        capture_output=True, text=True, timeout=5,
+                    from Quartz import (
+                        CGWindowListCopyWindowInfo,
+                        kCGWindowListOptionOnScreenOnly,
+                        kCGNullWindowID,
                     )
-                    if r.returncode == 0 and r.stdout.strip():
-                        screen_recording_granted = True
+                    _system_owners = {"Window Server", "SystemUIServer", "Dock", "Spotlight"}
+                    _windows = CGWindowListCopyWindowInfo(
+                        kCGWindowListOptionOnScreenOnly, kCGNullWindowID
+                    )
+                    for _w in (_windows or []):
+                        _owner = _w.get("kCGWindowOwnerName", "")
+                        _name = _w.get("kCGWindowName", "")
+                        _layer = _w.get("kCGWindowLayer", 0)
+                        if _owner not in _system_owners and _name and _layer == 0:
+                            screen_recording_granted = True
+                            break
                 except Exception:
                     pass
 
@@ -672,11 +682,30 @@ def create_app():
                 elif auth_status == 1:
                     notification_granted = False
                 else:
-                    # notDetermined: まだリクエストされていない
+                    # notDetermined: UNUserNotificationCenter では未登録だが
+                    # rumps は旧API（NSUserNotificationCenter）を使用するため
+                    # そちらで通知が機能するかチェック
                     notification_granted = False
                     notification_can_request = True
         except Exception:
             pass
+
+        # NSUserNotificationCenter（旧API）でのフォールバック確認
+        # rumps が使う API なので、こちらが機能すれば通知は動作する
+        if not notification_granted:
+            try:
+                import objc as _objc2
+                NSUserNotificationCenter = _objc2.lookUpClass("NSUserNotificationCenter")
+                _center = NSUserNotificationCenter.defaultUserNotificationCenter()
+                if _center is not None:
+                    # センターにアクセスでき、過去に通知配信歴があれば許可済みとみなす
+                    _delivered = _center.deliveredNotifications()
+                    if _delivered and len(_delivered) > 0:
+                        notification_granted = True
+                        notification_can_request = False
+            except Exception:
+                pass
+
         perm_entry = {
             "name": "通知",
             "description": "アップデート通知やポモドーロ通知に使用します",
@@ -691,66 +720,30 @@ def create_app():
 
     @app.route("/api/request-notification-permission", methods=["POST"])
     def request_notification_permission():
-        """通知許可をリクエストする（macOS の許可ダイアログを表示）"""
+        """テスト通知を送信して通知機能を有効化する
+
+        rumps は NSUserNotificationCenter（旧API）を使用しているため、
+        UNUserNotificationCenter.requestAuthorization は未署名アプリでは失敗する。
+        代わりに NSUserNotificationCenter でテスト通知を送信し、
+        macOS の通知許可ダイアログを表示させる。
+        """
         try:
-            import threading as _threading
             import objc
+            NSUserNotificationCenter = objc.lookUpClass("NSUserNotificationCenter")
+            NSUserNotification = objc.lookUpClass("NSUserNotification")
 
-            objc.loadBundle(
-                'UserNotifications',
-                bundle_path='/System/Library/Frameworks/UserNotifications.framework',
-                module_globals={},
-            )
+            center = NSUserNotificationCenter.defaultUserNotificationCenter()
+            notification = NSUserNotification.alloc().init()
+            notification.setTitle_("TimeReaper")
+            notification.setSubtitle_("通知テスト")
+            notification.setInformativeText_("通知が正常に機能しています ✅")
+            center.deliverNotification_(notification)
 
-            # requestAuthorizationWithOptions:completionHandler: のブロック署名を登録
-            objc.registerMetaDataForSelector(
-                b'UNUserNotificationCenter',
-                b'requestAuthorizationWithOptions:completionHandler:',
-                {
-                    'arguments': {
-                        3: {
-                            'callable': {
-                                'retval': {'type': b'v'},
-                                'arguments': {
-                                    0: {'type': b'^v'},
-                                    1: {'type': b'Z'},  # BOOL granted
-                                    2: {'type': b'@'},  # NSError
-                                },
-                            }
-                        }
-                    }
-                },
-            )
-
-            UNUserNotificationCenter = objc.lookUpClass("UNUserNotificationCenter")
-            center = UNUserNotificationCenter.currentNotificationCenter()
-            _event = _threading.Event()
-            _result = {"granted": None, "error": None}
-
-            def _on_request(granted, error):
-                _result["granted"] = bool(granted)
-                if error:
-                    _result["error"] = str(error)
-                _event.set()
-
-            # UNAuthorizationOptionAlert | UNAuthorizationOptionSound | UNAuthorizationOptionBadge
-            options = (1 << 0) | (1 << 1) | (1 << 2)
-            center.requestAuthorizationWithOptions_completionHandler_(options, _on_request)
-
-            from CoreFoundation import CFRunLoopRunInMode, kCFRunLoopDefaultMode
-            import time as _time
-            _start = _time.monotonic()
-            while not _event.is_set() and (_time.monotonic() - _start) < 30.0:
-                CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.1, False)
-
-            if _result["granted"] is not None:
-                return jsonify({
-                    "success": True,
-                    "granted": _result["granted"],
-                    "error": _result["error"],
-                })
-            else:
-                return jsonify({"success": False, "error": "タイムアウト"}), 500
+            return jsonify({
+                "success": True,
+                "granted": True,
+                "message": "テスト通知を送信しました。通知が表示されれば許可されています。",
+            })
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500
 

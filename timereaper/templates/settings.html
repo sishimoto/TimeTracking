@@ -776,7 +776,7 @@
                     html += '</div>';
                     html += '<div style="text-align: right; min-width: 80px; display: flex; align-items: center; gap: 8px;">';
                     if (p.can_request) {
-                        html += '<button onclick="requestNotificationPermission(this)" style="background: var(--accent-blue); color: #fff; border: none; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; white-space: nowrap; transition: opacity 0.2s;" onmouseover="this.style.opacity=\'0.8\'" onmouseout="this.style.opacity=\'1\'">🔔 許可する</button>';
+                        html += '<button onclick="requestNotificationPermission(this)" style="background: var(--accent-blue); color: #fff; border: none; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; white-space: nowrap; transition: opacity 0.2s;" onmouseover="this.style.opacity=\'0.8\'" onmouseout="this.style.opacity=\'1\'">🔔 通知テスト</button>';
                     }
                     html += '<span style="font-size: 14px;">' + statusIcon + '</span> ';
                     html += '<span style="font-size: 12px; color: ' + statusColor + ';">' + statusText + '</span>';
@@ -791,20 +791,16 @@
 
         async function requestNotificationPermission(btn) {
             btn.disabled = true;
-            btn.textContent = '⏳ リクエスト中...';
+            btn.textContent = '⏳ 送信中...';
             try {
                 const res = await fetch('/api/request-notification-permission', { method: 'POST' });
                 const data = await res.json();
-                if (data.success && data.granted) {
-                    btn.textContent = '✅ 許可されました';
+                if (data.success) {
+                    btn.textContent = '✅ テスト通知を送信しました';
                     btn.style.background = 'var(--accent-green)';
-                    setTimeout(() => loadPermissions(), 1000);
-                } else if (data.success && !data.granted) {
-                    btn.textContent = '❌ 拒否されました';
-                    btn.style.background = 'var(--accent-red)';
-                    setTimeout(() => loadPermissions(), 1000);
+                    setTimeout(() => loadPermissions(), 2000);
                 } else {
-                    btn.textContent = '⚠️ エラー';
+                    btn.textContent = '⚠️ エラー: ' + (data.error || '不明');
                     btn.style.background = 'var(--accent-orange)';
                 }
             } catch(e) {
