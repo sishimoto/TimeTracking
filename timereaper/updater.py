@@ -307,6 +307,34 @@ def perform_git_update() -> dict:
         }
 
 
+def _detach_dmg(mount_point: str) -> None:
+    """DMG をアンマウントする（リトライ＋force フォールバック付き）"""
+    if not mount_point or not os.path.exists(mount_point):
+        return
+    for attempt in range(3):
+        try:
+            cmd = ["hdiutil", "detach", mount_point, "-quiet"]
+            if attempt > 0:
+                cmd.append("-force")
+            subprocess.run(cmd, capture_output=True, timeout=15)
+            if not os.path.ismount(mount_point):
+                return
+        except subprocess.TimeoutExpired:
+            logger.warning(f"hdiutil detach タイムアウト (試行 {attempt + 1}/3)")
+        except Exception as e:
+            logger.warning(f"hdiutil detach エラー: {e}")
+        import time
+        time.sleep(1)
+    # 最終手段: force detach (タイムアウト長め)
+    try:
+        subprocess.run(
+            ["hdiutil", "detach", mount_point, "-force", "-quiet"],
+            capture_output=True, timeout=30,
+        )
+    except Exception:
+        logger.error(f"DMG アンマウントに失敗: {mount_point}")
+
+
 def perform_dmg_update(download_url: str) -> dict:
     """DMG をダウンロードして /Applications に自動インストールする（.app バンドル向け）
 
@@ -385,10 +413,8 @@ def perform_dmg_update(download_url: str) -> dict:
         shutil.copytree(app_src, app_dest)
 
         # 5. アンマウント
-        subprocess.run(
-            ["hdiutil", "detach", mount_point, "-quiet"],
-            capture_output=True, timeout=10,
-        )
+        _detach_dmg(mount_point)
+        mount_point = None
 
         # 6. 新しいアプリを起動（遅延実行してから自分を終了）
         logger.info("新しいバージョンを起動します...")
@@ -418,9 +444,8 @@ def perform_dmg_update(download_url: str) -> dict:
         }
     finally:
         # クリーンアップ
-        if mount_point and os.path.ismount(mount_point):
-            subprocess.run(["hdiutil", "detach", mount_point, "-quiet"],
-                           capture_output=True, timeout=10)
+        if mount_point:
+            _detach_dmg(mount_point)
         if tmpdir and os.path.exists(tmpdir):
             shutil.rmtree(tmpdir, ignore_errors=True)
 
