@@ -185,6 +185,33 @@ python main.py monitor --verbose
 - 複数回のやり取りで段階的に実装中（完成前）
 - 軽微な修正の途中で、まだ動作確認が済んでいない場合
 
+## Release Process (MANDATORY)
+
+リリース時は **必ず `scripts/release.sh` を使用すること。** 手動でのビルド・タグ・リリース作成は禁止。
+
+```bash
+# Step 1: テストビルド＋ローカル検証（全 PHASE 通過を確認）
+./scripts/release.sh
+
+# Step 2: 問題なければプレリリース
+./scripts/release.sh --prerelease
+
+# Step 3: 正式リリース
+./scripts/release.sh --release
+```
+
+### 自動検証項目（全 PHASE 通過が必須）:
+1. **PHASE 1**: pytest 全テスト通過
+2. **PHASE 2**: .app ビルド + DMG 作成 + /Applications インストール
+3. **PHASE 3**: DMG マウント/アンマウントテスト
+4. **PHASE 4**: アプリ起動 + 全 API 検証 (version, permissions, update, today, settings, ページレンダリング)
+5. **PHASE 5**: 通知テスト
+
+### ❌ リリースの禁止事項
+- `release.sh` を経由せずに `build.sh` を直接実行してリリースしない
+- PHASE 4 (API 検証) が通過していない状態でリリースしない
+- GitHub Release を `gh release create` で手動作成しない（`release.sh --prerelease` or `--release` を使う）
+
 ## Debugging & Logs
 
 ```bash
