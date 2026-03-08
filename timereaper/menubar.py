@@ -17,9 +17,15 @@ from .config import get_config
 from .database import init_db, insert_activity, get_daily_summary, get_current_meeting
 from .monitor import ActiveWindowMonitor, WindowInfo
 from .classifier import ActivityClassifier
-from .dashboard import run_dashboard, set_pomodoro_timer, set_settings_change_callback
+from .dashboard import (
+    run_dashboard,
+    set_pomodoro_timer,
+    set_settings_change_callback,
+    set_maintenance_prompt_handlers,
+)
 from .user_settings import load_user_settings, get_user_settings
 from .pomodoro import PomodoroTimer, PomodoroState, LongWorkAlert
+from .maintenance_prompt import MaintenancePromptDetector
 
 logger = logging.getLogger(__name__)
 
@@ -75,9 +81,14 @@ class TimeReaperApp(rumps.App):
 
         # 長時間作業アラートの初期化
         self._long_work_alert = self._create_long_work_alert()
+        self._maintenance_detector = self._create_maintenance_detector()
 
         # 設定変更コールバックの登録
         set_settings_change_callback(self._on_settings_changed)
+        set_maintenance_prompt_handlers(
+            self._maintenance_detector.get_current_prompt,
+            self._maintenance_detector.decide,
+        )
 
         # ダッシュボードサーバー起動
         self._start_dashboard()
@@ -204,6 +215,17 @@ class TimeReaperApp(rumps.App):
                         # 長時間アラート: アクティブ通知
                         self._long_work_alert.on_activity(is_idle=False)
 
+                        # 保守候補検知: 閾値超過時に通知
+                        prompt = self._maintenance_detector.on_activity(window_info, classification)
+                        if prompt:
+                            score = prompt.get("score", 0)
+                            app = prompt.get("snapshot", {}).get("app_name", "")
+                            rumps.notification(
+                                title="🛠 保守候補を検出",
+                                subtitle=f"score={score} / {app}",
+                                message="summary 画面で「開発中 / 保守中」を選択してください。",
+                            )
+
                     self._last_window = window_info
 
             except Exception as e:
@@ -301,6 +323,18 @@ class TimeReaperApp(rumps.App):
         alert._enabled = lwa.get("enabled", False)
         return alert
 
+    def _create_maintenance_detector(self) -> MaintenancePromptDetector:
+        """ユーザー設定から保守候補判定 detector を生成する"""
+        notif = self._user_settings.get("notifications", {})
+        mcf = notif.get("maintenance_confirmation", {})
+        return MaintenancePromptDetector(
+            enabled=mcf.get("enabled", False),
+            threshold_score=mcf.get("threshold_score", 3),
+            cooldown_minutes=mcf.get("cooldown_minutes", 20),
+            lookback_minutes=mcf.get("lookback_minutes", 15),
+            snooze_minutes=mcf.get("snooze_minutes", 10),
+        )
+
     def _on_pomodoro_complete(self, completed_state: PomodoroState):
         """ポモドーロタイマー完了時のコールバック"""
         pom = self._user_settings.get("pomodoro", {})
@@ -347,6 +381,14 @@ class TimeReaperApp(rumps.App):
             message=lwa.get("message", "長時間の連続作業です。休憩を取りましょう！"),
         )
         self._long_work_alert._enabled = lwa.get("enabled", False)
+        mcf = notif.get("maintenance_confirmation", {})
+        self._maintenance_detector.update_config(
+            enabled=mcf.get("enabled", False),
+            threshold_score=mcf.get("threshold_score", 3),
+            cooldown_minutes=mcf.get("cooldown_minutes", 20),
+            lookback_minutes=mcf.get("lookback_minutes", 15),
+            snooze_minutes=mcf.get("snooze_minutes", 10),
+        )
         logger.info("ユーザー設定を反映しました")
 
     def _check_for_updates(self):

@@ -8,7 +8,7 @@ from datetime import date, timedelta, datetime
 from flask import Flask, jsonify, request, render_template, send_from_directory, send_file, after_this_request
 from flask_cors import CORS
 import requests
-from typing import Any
+from typing import Any, Callable, Optional
 
 from .config import get_config
 from .database import (
@@ -29,6 +29,8 @@ from .database import (
 # グローバル: ポモドーロタイマーインスタンス（メニューバーアプリから設定される）
 _pomodoro_timer = None
 _settings_change_callback = None
+_maintenance_prompt_getter: Optional[Callable[[], Optional[dict]]] = None
+_maintenance_prompt_decider: Optional[Callable[[str, str], dict]] = None
 
 
 def set_pomodoro_timer(timer):
@@ -43,17 +45,43 @@ def set_settings_change_callback(callback):
     _settings_change_callback = callback
 
 
+def set_maintenance_prompt_handlers(
+    getter: Optional[Callable[[], Optional[dict]]],
+    decider: Optional[Callable[[str, str], dict]],
+):
+    """保守候補判定プロンプトの getter/decider を登録する。"""
+    global _maintenance_prompt_getter, _maintenance_prompt_decider
+    _maintenance_prompt_getter = getter
+    _maintenance_prompt_decider = decider
+
+
 def _get_pomodoro_timer():
     return _pomodoro_timer
 
 
-def _notify_settings_changed(settings):
-    if _settings_change_callback:
+    def _notify_settings_changed(settings):
+        if _settings_change_callback:
+            try:
+                _settings_change_callback(settings)
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error(f"設定変更通知エラー: {e}")
+
+    def _get_maintenance_prompt() -> Optional[dict]:
+        if not _maintenance_prompt_getter:
+            return None
         try:
-            _settings_change_callback(settings)
+            return _maintenance_prompt_getter()
+        except Exception:
+            return None
+
+    def _decide_maintenance_prompt(prompt_id: str, decision: str) -> dict:
+        if not _maintenance_prompt_decider:
+            return {"ok": False, "reason": "handler_not_registered"}
+        try:
+            return _maintenance_prompt_decider(prompt_id, decision)
         except Exception as e:
-            import logging
-            logging.getLogger(__name__).error(f"設定変更通知エラー: {e}")
+            return {"ok": False, "reason": f"handler_error:{e}"}
 
 
 def create_app():
@@ -241,6 +269,38 @@ def create_app():
             project=project,
         )
         return jsonify({"updated": updated})
+
+    @app.route("/api/maintenance-prompt/current")
+    def api_maintenance_prompt_current():
+        """現在の保守候補判定プロンプトを返す"""
+        return jsonify({"prompt": _get_maintenance_prompt()})
+
+    @app.route("/api/maintenance-prompt/decide", methods=["POST"])
+    def api_maintenance_prompt_decide():
+        """保守候補判定プロンプトに対するユーザー判定を適用する"""
+        data = request.get_json() or {}
+        prompt_id = data.get("prompt_id", "")
+        decision = data.get("decision", "")
+        start_time = data.get("start_time")
+        end_time = data.get("end_time")
+        suggested_project = data.get("project", "Impulse保守開発・保守作業")
+
+        if decision not in ("maintenance", "development", "later"):
+            return jsonify({"ok": False, "error": "decision must be maintenance/development/later"}), 400
+
+        updated = 0
+        if decision == "maintenance" and start_time and end_time:
+            updated = update_activity_tags_by_time(
+                start_time=start_time,
+                end_time=end_time,
+                project=suggested_project,
+            )
+
+        result = _decide_maintenance_prompt(prompt_id, decision)
+        if not result.get("ok"):
+            return jsonify({"ok": False, "error": result.get("reason", "unknown"), "updated": updated}), 409
+
+        return jsonify({"ok": True, "updated": updated, "result": result})
 
     @app.route("/api/add-tag", methods=["POST"])
     def api_add_tag():

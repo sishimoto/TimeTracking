@@ -600,6 +600,42 @@
             </p>
         </div>
 
+        <!-- Maintenance Confirmation Section -->
+        <div class="settings-section">
+            <div class="section-header">
+                <h2>🛠 保守候補の確認通知</h2>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="maintenanceConfirmEnabled" onchange="onToggle()">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <p class="section-desc">
+                保守の可能性がある作業を検出したときに通知し、summary 画面で「開発中 / 保守中」の判定を促します。
+            </p>
+            <div class="settings-body" id="maintenanceConfirmSettings">
+                <div class="param-grid">
+                    <div class="param-item">
+                        <label>検知スコア閾値</label>
+                        <input type="number" id="maintenanceScoreThreshold" min="1" max="10" value="3" onchange="onParamChange()">
+                    </div>
+                    <div class="param-item">
+                        <label>通知クールダウン（分）</label>
+                        <input type="number" id="maintenanceCooldownMinutes" min="1" max="180" value="20" onchange="onParamChange()">
+                    </div>
+                </div>
+                <div class="param-grid" style="margin-top: 16px;">
+                    <div class="param-item">
+                        <label>保守確定時の適用範囲（分）</label>
+                        <input type="number" id="maintenanceLookbackMinutes" min="1" max="120" value="15" onchange="onParamChange()">
+                    </div>
+                    <div class="param-item">
+                        <label>「後で」スヌーズ（分）</label>
+                        <input type="number" id="maintenanceSnoozeMinutes" min="1" max="120" value="10" onchange="onParamChange()">
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Local Migration Section -->
         <div class="settings-section">
             <div class="section-header">
@@ -704,6 +740,14 @@
             const irs = (s.notifications || {}).idle_return_summary || {};
             document.getElementById('idleReturnEnabled').checked = irs.enabled || false;
 
+            // Maintenance confirmation
+            const mcf = (s.notifications || {}).maintenance_confirmation || {};
+            document.getElementById('maintenanceConfirmEnabled').checked = mcf.enabled || false;
+            document.getElementById('maintenanceScoreThreshold').value = mcf.threshold_score || 3;
+            document.getElementById('maintenanceCooldownMinutes').value = mcf.cooldown_minutes || 20;
+            document.getElementById('maintenanceLookbackMinutes').value = mcf.lookback_minutes || 15;
+            document.getElementById('maintenanceSnoozeMinutes').value = mcf.snooze_minutes || 10;
+
             updateDisabledState();
         }
 
@@ -714,6 +758,9 @@
 
             const lwaEnabled = document.getElementById('longWorkAlertEnabled').checked;
             document.getElementById('longWorkAlertSettings').classList.toggle('disabled', !lwaEnabled);
+
+            const mcfEnabled = document.getElementById('maintenanceConfirmEnabled').checked;
+            document.getElementById('maintenanceConfirmSettings').classList.toggle('disabled', !mcfEnabled);
         }
 
         function gatherFromUI() {
@@ -737,6 +784,13 @@
                     },
                     idle_return_summary: {
                         enabled: document.getElementById('idleReturnEnabled').checked,
+                    },
+                    maintenance_confirmation: {
+                        enabled: document.getElementById('maintenanceConfirmEnabled').checked,
+                        threshold_score: parseInt(document.getElementById('maintenanceScoreThreshold').value) || 3,
+                        cooldown_minutes: parseInt(document.getElementById('maintenanceCooldownMinutes').value) || 20,
+                        lookback_minutes: parseInt(document.getElementById('maintenanceLookbackMinutes').value) || 15,
+                        snooze_minutes: parseInt(document.getElementById('maintenanceSnoozeMinutes').value) || 10,
                     },
                 },
             };

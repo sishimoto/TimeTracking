@@ -36,6 +36,13 @@ _DEFAULTS: dict[str, Any] = {
         "idle_return_summary": {
             "enabled": False,
         },
+        "maintenance_confirmation": {
+            "enabled": False,
+            "threshold_score": 3,
+            "cooldown_minutes": 20,
+            "lookback_minutes": 15,
+            "snooze_minutes": 10,
+        },
     },
 }
 

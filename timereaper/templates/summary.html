@@ -204,6 +204,72 @@
 
         .filter-badge.active { display: inline; }
 
+        /* Maintenance decision banner */
+        .maintenance-banner {
+            display: none;
+            margin-bottom: 14px;
+            background: rgba(240, 136, 62, 0.12);
+            border: 1px solid rgba(240, 136, 62, 0.45);
+            border-radius: 10px;
+            padding: 12px 14px;
+        }
+
+        .maintenance-banner.visible {
+            display: block;
+        }
+
+        .maintenance-banner .title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--accent-orange);
+            margin-bottom: 6px;
+        }
+
+        .maintenance-banner .desc {
+            font-size: 12px;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .maintenance-banner .meta {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            word-break: break-all;
+        }
+
+        .maintenance-banner .actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .maintenance-banner button {
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 12px;
+            color: var(--text-primary);
+            background: var(--bg-secondary);
+        }
+
+        .maintenance-banner button.maintenance {
+            border-color: var(--accent-orange);
+            color: var(--accent-orange);
+            background: rgba(240, 136, 62, 0.14);
+        }
+
+        .maintenance-banner button.dev {
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+            background: rgba(88, 166, 255, 0.14);
+        }
+
+        .maintenance-banner button.later {
+            color: var(--text-secondary);
+        }
+
         /* Block Table */
         .block-table {
             width: 100%;
@@ -794,6 +860,17 @@
             <button class="secondary" id="llmBtn" onclick="runLlmClassify()" style="display:none;" title="LLM でアクティビティを自動分類">🤖 AI分類</button>
         </div>
 
+        <div class="maintenance-banner" id="maintenanceBanner">
+            <div class="title">🛠 保守候補を検出しました</div>
+            <div class="desc" id="maintenanceBannerDesc"></div>
+            <div class="meta" id="maintenanceBannerMeta"></div>
+            <div class="actions">
+                <button class="maintenance" onclick="decideMaintenancePrompt('maintenance')">保守中として反映</button>
+                <button class="dev" onclick="decideMaintenancePrompt('development')">開発中</button>
+                <button class="later" onclick="decideMaintenancePrompt('later')">後で</button>
+            </div>
+        </div>
+
         <!-- Block Table -->
         <div class="table-wrap">
             <table class="block-table">
@@ -869,6 +946,8 @@
         let selected = new Set();
         let lastSelectedIdx = null;
         let tagOptions = null;
+        let maintenancePrompt = null;
+        let maintenancePromptTimer = null;
 
         // Drag selection state
         let isDragging = false;
@@ -883,6 +962,8 @@
             loadBlocks();
             loadTagOptions();
             initDragSelection();
+            pollMaintenancePrompt();
+            maintenancePromptTimer = setInterval(pollMaintenancePrompt, 15000);
         });
 
         // --- Navigation ---
@@ -956,6 +1037,84 @@
             } catch (err) {
                 console.error('タグ選択肢取得エラー:', err);
                 tagOptions = { task_categories: [], cost_categories: [] };
+            }
+        }
+
+        async function pollMaintenancePrompt() {
+            try {
+                const res = await fetch('/api/maintenance-prompt/current');
+                if (!res.ok) return;
+                const data = await res.json();
+                const prompt = data.prompt || null;
+                if (!prompt) {
+                    maintenancePrompt = null;
+                    renderMaintenancePrompt();
+                    return;
+                }
+                if (maintenancePrompt && maintenancePrompt.id === prompt.id) return;
+                maintenancePrompt = prompt;
+                renderMaintenancePrompt();
+            } catch (e) {
+                // 通信エラー時は静かに継続
+            }
+        }
+
+        function renderMaintenancePrompt() {
+            const el = document.getElementById('maintenanceBanner');
+            if (!el) return;
+            if (!maintenancePrompt) {
+                el.classList.remove('visible');
+                return;
+            }
+            const s = maintenancePrompt.snapshot || {};
+            const score = maintenancePrompt.score || 0;
+            const reasons = (maintenancePrompt.reasons || []).join(' / ');
+            const title = s.tab_title || s.window_title || '(タイトルなし)';
+            document.getElementById('maintenanceBannerDesc').textContent =
+                `${s.app_name || 'Unknown'}: ${title.slice(0, 120)}`;
+            document.getElementById('maintenanceBannerMeta').textContent =
+                `score=${score} | reasons=${reasons || '-'} | suggested=${maintenancePrompt.suggested_project || ''}`;
+            el.classList.add('visible');
+        }
+
+        async function decideMaintenancePrompt(decision) {
+            if (!maintenancePrompt) return;
+            const body = {
+                prompt_id: maintenancePrompt.id,
+                decision,
+                project: maintenancePrompt.suggested_project || 'Impulse保守開発・保守作業',
+            };
+            if (decision === 'maintenance') {
+                const lookback = maintenancePrompt.lookback_minutes || 15;
+                const now = new Date();
+                const start = new Date(now.getTime() - lookback * 60 * 1000);
+                body.start_time = start.toISOString().replace('Z', '');
+                body.end_time = now.toISOString().replace('Z', '');
+            }
+
+            try {
+                const res = await fetch('/api/maintenance-prompt/decide', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                });
+                const data = await res.json();
+                if (!res.ok || !data.ok) {
+                    showToast('⚠️ 保守判定の反映に失敗しました');
+                    return;
+                }
+                maintenancePrompt = null;
+                renderMaintenancePrompt();
+                if (decision === 'maintenance') {
+                    showToast(`✅ 保守に反映しました (${data.updated || 0}件)`);
+                    loadBlocks();
+                } else if (decision === 'development') {
+                    showToast('✅ 開発中として記録を継続します');
+                } else {
+                    showToast('⏸ 後で再確認します');
+                }
+            } catch (e) {
+                showToast('⚠️ 保守判定の通信に失敗しました');
             }
         }
 
